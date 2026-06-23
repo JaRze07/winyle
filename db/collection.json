@@ -1,35 +1,5 @@
 {
-  "crates": [
-    {
-      "id": "mqqze2n73otb",
-      "name": "Sobotni wieczÃ³r",
-      "tagColor": "#C04A3E",
-      "closed": false
-    }
-  ],
-  "albums": [
-    {
-      "id": "mqqze2n7ioff",
-      "crateId": "mqqze2n73otb",
-      "position": 1,
-      "artist": "Talking Heads",
-      "title": "Remain in Light",
-      "genre": "Rock",
-      "mood": "Energetyczny",
-      "year": "1980",
-      "cover": ""
-    },
-    {
-      "id": "mqqze2n7tig3",
-      "crateId": "mqqze2n73otb",
-      "position": 2,
-      "artist": "Curtis Mayfield",
-      "title": "Super Fly",
-      "genre": "Funk",
-      "mood": "Impreza",
-      "year": "1972",
-      "cover": ""
-    }
-  ],
+  "crates": [],
+  "albums": [],
   "covers": {}
 }
