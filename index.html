@@ -149,6 +149,12 @@
   .card{background:rgba(255,255,255,.06);border-radius:14px;border:1px solid rgba(255,255,255,.08)}
   .toast{position:fixed;bottom:118px;left:50%;transform:translateX(-50%);background:var(--paper);color:#2a1808;font-weight:600;font-size:15px;padding:12px 20px;border-radius:999px;z-index:80;box-shadow:var(--shadow);animation:fade .2s;max-width:90%;text-align:center}
   .page-h,.lead,.sectlabel,.backlink,.counter,.empty{text-shadow:0 1px 2px rgba(0,0,0,.45)}
+  .starrow{display:flex;gap:6px;font-size:28px}
+  .star{color:var(--ink-3);cursor:pointer;transition:color .15s}
+  .star.on{color:var(--amber)}
+  .stars{color:var(--amber);font-size:13px;letter-spacing:1px}
+  .nbrs{font-size:11px;color:var(--faint);margin-top:4px;line-height:1.4}
+  .nbr{opacity:.7}
 </style>
 </head>
 <body>
@@ -368,6 +374,23 @@ function openBarcodeScanner(cb){
 
 /* ===== helpers ===== */
 function crateAlbums(id){ return state.albums.filter(a=>a.crateId===id).sort((x,y)=>x.position-y.position); }
+function neighborInfo(a){
+  const albs=crateAlbums(a.crateId);
+  const idx=albs.findIndex(x=>x.id===a.id);
+  const crate=state.crates.find(c=>c.id===a.crateId);
+  const prev=idx>0?albs[idx-1]:null;
+  const next=idx<albs.length-1?albs[idx+1]:null;
+  const total=albs.length;
+  let txt=esc(crate?crate.name:'')+'  ·  miejsce #'+a.position+' z '+total;
+  if(prev||next){
+    txt+='<div class="nbrs">';
+    if(prev) txt+='<span class="nbr">\u2190 '+esc(prev.artist||'')+' \u2014 '+esc(prev.title||'')+'</span>';
+    if(prev&&next) txt+=' ';
+    if(next) txt+='<span class="nbr">'+esc(next.artist||'')+' \u2014 '+esc(next.title||'')+' \u2192</span>';
+    txt+='</div>';
+  }
+  return txt;
+}
 function usedGenres(){ return [...new Set(state.albums.map(a=>(a.genre||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl')); }
 function usedMoods(){ return [...new Set(state.albums.map(a=>(a.mood||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl')); }
 function frontAlbum(id){ const a=crateAlbums(id); return a[a.length-1]; }
@@ -472,7 +495,7 @@ function rowHTML(a){
     <span class="handle" data-handle>⋮⋮</span>
     ${a.cover?`<img class="cover" data-cover="${a.id}" alt="">`:`<div class="cover">brak okładki</div>`}
     <div class="info"><b>${esc(a.title)||'Bez tytułu'}</b>
-      <div class="sub">${esc(a.artist)||'Nieznany'} ${a.year?'· '+a.year:''} ${a.genre?'· '+a.genre:''}</div></div>
+      <div class="sub">${esc(a.artist)||'Nieznany'} ${a.year?'· '+a.year:''} ${a.genre?'· '+a.genre:''} ${a.rating?'<span class="stars">'+('\u2605'.repeat(a.rating)+'\u2606'.repeat(5-a.rating))+'</span>':''}</div></div>
     <span class="pos">#${a.position}</span>
   </div>`;
 }
@@ -524,7 +547,7 @@ function openNewCrate(){
 
 /* capture */
 function openCapture(crate){
-  let coverVal=null, coverIsLocal=false, mood='';
+  let coverVal=null, coverIsLocal=false, mood='', rating=0;
   const sheet=modal(`
     <h2>Dodaj płytę</h2>
     <label class="fld"><span>Do której skrzynki</span>
@@ -543,6 +566,7 @@ function openCapture(crate){
     <input type="file" accept="image/*" capture="environment" id="file" style="display:none">
     <label class="fld" style="margin-top:16px"><span>Nastrój / tempo</span></label>
     <div class="chiprow" id="mPick" style="margin-bottom:20px">${MOODS.map(g=>`<span class="chip" data-m="${g}">${g}</span>`).join('')}</div>
+    <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">\u2605</span>').join('')}</div></div>
     <div class="queue-pill" id="qpill" style="display:none"></div>
     <button class="btn" id="addToCrate">Dodaj do skrzynki</button>
     <button class="btn ghost" id="doneAdding" style="margin-top:10px">Gotowe</button>`);
@@ -555,6 +579,10 @@ function openCapture(crate){
   const applyData=d=>{ setV('artist',d.artist);setV('title',d.title);setV('year',d.year);setV('genre',d.genre); if(d.cover){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);} };
 
   sheet.querySelectorAll('[data-m]').forEach(c=>c.onclick=()=>{mood=c.dataset.m;sheet.querySelectorAll('[data-m]').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
+  sheet.querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
+    rating=+s.dataset.r;
+    sheet.querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
+  });
 
   // Level 1 — barcode (instant feedback)
   sheet.querySelector('#scanBtn').onclick=()=>openBarcodeScanner(async code=>{
@@ -592,6 +620,43 @@ function openCapture(crate){
     downscale(f).then(d=>{ if(d){ coverVal=d; coverIsLocal=true; showImg(d); } });
   });
 
+  // auto-search while typing
+  let searchTimer=null;
+  const autoSearch=()=>{
+    clearTimeout(searchTimer);
+    const a=sheet.querySelector('#artist').value.trim();
+    const t=sheet.querySelector('#title').value.trim();
+    if(!a&&!t) return;
+    searchTimer=setTimeout(async()=>{
+      const q=[a,t].filter(Boolean).join(' \u2014 ');
+      try{
+        if(CONFIG.CLAUDE_PROXY){
+          setStatus('Szukam\u2026','busy');
+          const d=await claudeFind(q);
+          if(d&&(d.title||d.artist)){
+            if(!sheet.querySelector('#year').value&&d.year) sheet.querySelector('#year').value=d.year;
+            if(!sheet.querySelector('#genre').value&&d.genre) sheet.querySelector('#genre').value=d.genre;
+            if(!coverVal&&d.artist&&d.title){
+              const c=await getApiCover(d.artist,d.title);
+              if(c&&c.cover){coverVal=c.cover;coverIsLocal=false;showImg(c.cover);}
+            }
+            setStatus('\u2713 Dopasowano','ok');
+            return;
+          }
+        }
+        const d=await getApiCover(a||'',t||'');
+        if(d){
+          if(d.cover&&!coverVal){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);}
+          if(!sheet.querySelector('#year').value&&d.year) sheet.querySelector('#year').value=d.year;
+          if(!sheet.querySelector('#genre').value&&d.genre) sheet.querySelector('#genre').value=d.genre;
+          setStatus('\u2713 Dopasowano','ok');
+        }
+      }catch(e){}
+    },1200);
+  };
+  sheet.querySelector('#artist').addEventListener('input',autoSearch);
+  sheet.querySelector('#title').addEventListener('input',autoSearch);
+
   sheet.querySelector('#addToCrate').onclick=async()=>{
     const targetId=sheet.querySelector('#crateSel').value;
     const artist=sheet.querySelector('#artist').value.trim();
@@ -604,13 +669,14 @@ function openCapture(crate){
     let cover='';
     if(coverVal&&coverIsLocal){ await saveCover(id,coverVal); cover='local'; }
     else if(coverVal){ cover=coverVal; }
-    state.albums.push({id,crateId:targetId,position:nextPos,artist,title,genre,mood,year,cover});
+    state.albums.push({id,crateId:targetId,position:nextPos,artist,title,genre,mood,year,cover,rating});
     await persist();
     addedThisSession++;
-    coverVal=null;coverIsLocal=false;mood='';
+    coverVal=null;coverIsLocal=false;mood='';rating=0;
     showPh('Zeskanuj kod, znajdź przez Claude, albo wpisz ręcznie'); setStatus('','');
     ['artist','title','year','genre'].forEach(x=>sheet.querySelector('#'+x).value='');
     sheet.querySelectorAll('.chip.on').forEach(x=>x.classList.remove('on'));
+    sheet.querySelectorAll('#rPick .star').forEach(x=>x.classList.remove('on'));
     const qp=sheet.querySelector('#qpill'); qp.style.display='flex';
     qp.innerHTML=`<span>📦</span><span>Dodano <b>${addedThisSession}</b> ${plPly(addedThisSession)} w tej sesji</span>`;
     toast('Dodano · miejsce #'+nextPos+' (przód)');
@@ -620,8 +686,51 @@ function openCapture(crate){
 function downscale(file){
   return new Promise(res=>{
     const img=new Image(),url=URL.createObjectURL(file);
-    img.onload=()=>{const max=600,s=Math.min(1,max/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=img.width*s;cv.height=img.height*s;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);URL.revokeObjectURL(url);res(cv.toDataURL('image/jpeg',0.78));};
-    img.onerror=()=>res(null); img.src=url;
+    img.onload=()=>{
+      // Step 1: draw full image
+      const tmp=document.createElement('canvas');
+      tmp.width=img.width;tmp.height=img.height;
+      const tctx=tmp.getContext('2d');
+      tctx.drawImage(img,0,0);
+      // Step 2: auto-trim — detect background and crop
+      const idata=tctx.getImageData(0,0,tmp.width,tmp.height);
+      const d=idata.data;
+      const w=tmp.width,h=tmp.height;
+      // sample edge pixels to find background color
+      let rSum=0,gSum=0,bSum=0,count=0;
+      const sampleEdge=(x,y)=>{const i=(y*w+x)*4;rSum+=d[i];gSum+=d[i+1];bSum+=d[i+2];count++;};
+      for(let x=0;x<w;x+=Math.max(1,Math.floor(w/50))){sampleEdge(x,0);sampleEdge(x,h-1);}
+      for(let y=0;y<h;y+=Math.max(1,Math.floor(h/50))){sampleEdge(0,y);sampleEdge(w-1,y);}
+      const bgR=rSum/count,bgG=gSum/count,bgB=bSum/count;
+      const thresh=35;
+      const isBg=(x,y)=>{const i=(y*w+x)*4;return Math.abs(d[i]-bgR)+Math.abs(d[i+1]-bgG)+Math.abs(d[i+2]-bgB)<thresh*3;};
+      const step=Math.max(1,Math.floor(Math.min(w,h)/100));
+      let top=0,bot=h-1,left=0,right=w-1;
+      // top edge
+      outer:for(let y=0;y<h*0.4;y+=step){for(let x=Math.floor(w*0.2);x<w*0.8;x+=step){if(!isBg(x,y)){top=Math.max(0,y-2);break outer;}}}
+      // bottom edge
+      outer2:for(let y=h-1;y>h*0.6;y-=step){for(let x=Math.floor(w*0.2);x<w*0.8;x+=step){if(!isBg(x,y)){bot=Math.min(h-1,y+2);break outer2;}}}
+      // left edge
+      outer3:for(let x=0;x<w*0.4;x+=step){for(let y=Math.floor(h*0.2);y<h*0.8;y+=step){if(!isBg(x,y)){left=Math.max(0,x-2);break outer3;}}}
+      // right edge
+      outer4:for(let x=w-1;x>w*0.6;x-=step){for(let y=Math.floor(h*0.2);y<h*0.8;y+=step){if(!isBg(x,y)){right=Math.min(w-1,x+2);break outer4;}}}
+      // only crop if meaningful bounds
+      let cx=left,cy=top,cw=right-left+1,ch=bot-top+1;
+      if(cw<w*0.4||ch<h*0.4){cx=0;cy=0;cw=w;ch=h;}
+      // Step 3: make squarish
+      const side=Math.min(cw,ch);
+      if(cw>ch*1.15){cx+=Math.floor((cw-side)/2);cw=side;}
+      else if(ch>cw*1.15){cy+=Math.floor((ch-side)/2);ch=side;}
+      // Step 4: downscale to max 600px
+      const max=600,s=Math.min(1,max/Math.max(cw,ch));
+      const cv=document.createElement('canvas');
+      cv.width=Math.round(cw*s);cv.height=Math.round(ch*s);
+      cv.getContext('2d').drawImage(tmp,cx,cy,cw,ch,0,0,cv.width,cv.height);
+      URL.revokeObjectURL(url);
+      res(cv.toDataURL('image/jpeg',0.82));
+    };
+    img.onerror=()=>{URL.revokeObjectURL(url);res(null);};
+    img.src=url;
   });
 }
 
@@ -669,8 +778,8 @@ function cardInner(a){
   return `<div class="art" ${a.cover?`data-cover-bg="${a.id}"`:''}>${a.cover?'':'brak okładki'}</div>
     <div class="meta"><b>${esc(a.title)||'Bez tytułu'}</b>
       <div class="sub muted">${esc(a.artist)} ${a.year?'· '+a.year:''} · ${a.genre||'—'}</div>
-      <div class="loc-box"><div class="cn">${esc(crate.name)}</div>
-        <div class="where">miejsce #${a.position}</div></div>
+      ${a.rating?'<div class="stars" style="margin-top:4px">'+('\u2605'.repeat(a.rating)+'\u2606'.repeat(5-a.rating))+'</div>':''}
+      <div class="loc-box">${neighborInfo(a)}</div>
     </div>`;
 }
 function renderCarousel(dir){
@@ -752,10 +861,9 @@ function renderSearch(){
       const crate=state.crates.find(c=>c.id===a.crateId);
       return `<div class="row" data-go="${a.crateId}">
         ${a.cover?`<img class="cover" data-cover="${a.id}" alt="">`:`<div class="cover">brak okładki</div>`}
-        <div class="info"><b>${esc(a.title)||'Bez tytułu'}</b><div class="sub">${esc(a.artist)} ${a.genre?'· '+a.genre:''}</div></div>
-        <div style="text-align:right">
-          <div class="res-loc">${esc(crate.name)}</div>
-          <div class="faint" style="font-size:14px;margin-top:4px;font-family:var(--mono)">miejsce #${a.position}</div>
+        <div class="info"><b>${esc(a.title)||'Bez tytułu'}</b><div class="sub">${esc(a.artist)} ${a.genre?'· '+a.genre:''} ${a.rating?'<span class="stars">'+('\u2605'.repeat(a.rating)+'\u2606'.repeat(5-a.rating))+'</span>':''}</div></div>
+        <div style="text-align:right;min-width:100px">
+          <div class="res-loc">${neighborInfo(a)}</div>
         </div>
       </div>`;
     }).join(''):`<div class="empty"><div class="ico">⌕</div><div class="big">Nic nie znaleziono</div><div>Spróbuj innej nazwy lub wyczyść filtr gatunku.</div></div>`}</div>`;
