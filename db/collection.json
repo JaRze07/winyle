@@ -28,7 +28,7 @@
     {
       "id": "mqqv951rxec7",
       "crateId": "mqqv951rrqwe",
-      "position": 2,
+      "position": 3,
       "artist": "John Coltrane",
       "title": "A Love Supreme",
       "genre": "Jazz",
@@ -39,7 +39,7 @@
     {
       "id": "mqqv951rvta2",
       "crateId": "mqqv951rrqwe",
-      "position": 3,
+      "position": 4,
       "artist": "Nina Simone",
       "title": "Pastel Blues",
       "genre": "Soul",
@@ -72,7 +72,7 @@
     {
       "id": "mqqwpi7jmu2z",
       "crateId": "mqqv951rrqwe",
-      "position": 4,
+      "position": 2,
       "artist": "The Beatles",
       "title": "Abbey Road",
       "genre": "Rock",
