@@ -9,7 +9,7 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600;700&subset=latin,latin-ext&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#241405; --ink-2:#3a2414; --ink-3:#4a3119; --line:#6b4a28;
@@ -88,6 +88,8 @@
   .sheet{width:100%;max-width:500px;background:var(--ink-2);border-top-left-radius:16px;border-top-right-radius:16px;border:1.5px solid #1c1004;border-bottom:none;padding:12px 20px calc(22px + env(safe-area-inset-bottom));max-height:92vh;overflow-y:auto;animation:up .26s cubic-bezier(.2,.9,.3,1);box-shadow:0 -10px 30px rgba(0,0,0,.5)}
   @keyframes up{from{transform:translateY(100%)}}
   .grab{width:44px;height:5px;border-radius:3px;background:var(--line);margin:5px auto 18px}
+  .sheet-x{position:absolute;top:12px;right:14px;background:none;border:none;color:var(--faint);font-size:24px;padding:8px;cursor:pointer;z-index:2;line-height:1}
+  .sheet-x:hover{color:var(--paper)}
   .sheet h2{font-family:var(--disp);font-weight:700;font-size:23px;margin:0 0 16px}
   label.fld{display:block;margin-bottom:15px}
   label.fld span{display:block;font-size:14px;font-weight:600;color:var(--paper-2);margin-bottom:7px}
@@ -368,19 +370,35 @@ function openBarcodeScanner(cb,onCancel){
   (async()=>{
     try{
       stream=await navigator.mediaDevices.getUserMedia({video:{
-        facingMode:'environment',width:{ideal:1920},height:{ideal:1080},
-        focusMode:{ideal:'continuous'},exposureMode:{ideal:'continuous'},whiteBalanceMode:{ideal:'continuous'}
+        facingMode:{exact:'environment'},
+        width:{ideal:3840,min:1920},height:{ideal:2160,min:1080},
+        frameRate:{ideal:30},
+        focusMode:{ideal:'continuous'},
+        exposureMode:{ideal:'continuous'},
+        whiteBalanceMode:{ideal:'continuous'}
       }});
       const v=ov.querySelector('#scanvid'); v.srcObject=stream; await v.play();
       const track=stream.getVideoTracks()[0];
-      if(track&&track.applyConstraints){try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}}
+      if(track){
+        try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}
+        // add torch toggle button
+        try{
+          const caps=track.getCapabilities&&track.getCapabilities();
+          if(caps&&caps.torch){
+            const torchBtn=el('<button class="btn ghost" id="scanTorch" style="position:absolute;top:16px;right:16px;padding:8px 14px;font-size:20px;z-index:5">🔦</button>');
+            ov.querySelector('.scanov').appendChild(torchBtn);
+            let torchOn=false;
+            torchBtn.onclick=async()=>{torchOn=!torchOn;try{await track.applyConstraints({advanced:[{torch:torchOn}]});}catch(e){}torchBtn.style.opacity=torchOn?'1':'0.5';};
+          }
+        }catch(e){}
+      }
       const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
       const scanCv=document.createElement('canvas');const scanCtx=scanCv.getContext('2d');
       const tick=async()=>{ if(!running)return;
         try{
           if(v.videoWidth){
             scanCv.width=v.videoWidth;scanCv.height=v.videoHeight;
-            scanCtx.filter='contrast(1.5) brightness(1.1)';
+            scanCtx.filter='contrast(1.8) saturate(0)';
             scanCtx.drawImage(v,0,0);scanCtx.filter='none';
             const codes=await det.detect(scanCv);
             if(codes&&codes.length){ const code=codes[0].rawValue; cleanup(); cb(code); return; }
@@ -543,9 +561,11 @@ function enableDrag(crateId){
 /* ===== modals ===== */
 function modal(inner){
   const root=document.getElementById('modalRoot');
-  const scrim=el(`<div class="scrim"><div class="sheet"><div class="grab"></div>${inner}</div></div>`);
-  scrim.addEventListener('click',e=>{if(e.target===scrim)root.innerHTML='';});
+  const scrim=el(`<div class="scrim"><div class="sheet"><button class="sheet-x" id="sheetClose">✕</button>${inner}</div></div>`);
+  scrim.addEventListener('click',e=>{if(e.target===scrim)closeModal();});
+  scrim.querySelector('#sheetClose').onclick=()=>closeModal();
   root.innerHTML=''; root.appendChild(scrim);
+  history.pushState({modal:true},'');
   return scrim.querySelector('.sheet');
 }
 function closeModal(){ document.getElementById('modalRoot').innerHTML=''; }
@@ -674,7 +694,8 @@ function openCapture(crate){
     let mood='',rating=0;
     const addBtnLabel=continueScan?'Dodaj i skanuj następny':'Dodaj do skrzynki';
     content().innerHTML=`
-      <div class="cover-prev">${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">Brak okładki</div>'}</div>
+      <div class="cover-prev" id="resCover">${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">Brak okładki<br><small style="color:var(--amber);cursor:pointer" id="addCoverBtn">+ Zrób zdjęcie</small></div>'}</div>
+      <input type="file" id="resCoverFile" accept="image/*" capture="environment" hidden>
       <div style="text-align:center;padding:10px 0">
         <div style="font-size:20px;font-weight:700">${esc(d.title||'')}</div>
         <div style="font-size:16px;color:var(--paper-2);margin-top:4px">${esc(d.artist||'')} ${d.year?'· '+d.year:''} ${d.genre?'· '+d.genre:''}</div>
@@ -696,6 +717,13 @@ function openCapture(crate){
       mood=mood===c.dataset.m?'':c.dataset.m;
       content().querySelectorAll('#mPick .chip').forEach(x=>x.classList.toggle('on',x.dataset.m===mood));
     });
+    // cover photo for missing covers
+    const addCoverBtn=content().querySelector('#addCoverBtn');
+    if(addCoverBtn){
+      const coverFile=content().querySelector('#resCoverFile');
+      addCoverBtn.onclick=()=>coverFile.click();
+      coverFile.onchange=e=>{const f=e.target.files[0];if(!f)return;downscale(f).then(url=>{if(url){coverVal=url;coverIsLocal=true;content().querySelector('#resCover').innerHTML='<img src="'+url+'" alt="">';}});};
+    }
     // back
     content().querySelector('#backToMethods').onclick=e=>{e.preventDefault();showMethods();};
     // add helper
@@ -1093,6 +1121,12 @@ function renderSettings(){
     location.reload(true);
   };
 }
+
+/* ===== back button support ===== */
+window.addEventListener('popstate',()=>{
+  if(document.getElementById('modalRoot').innerHTML){closeModal();}
+  else if(state.crateId){state.crateId=null;render();}
+});
 
 /* ===== boot ===== */
 if('serviceWorker' in navigator){ window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{})); }
