@@ -5,12 +5,6 @@
       "name": "Niedzielny jazz",
       "tagColor": "#EFAD45",
       "closed": true
-    },
-    {
-      "id": "mqqv951ri5ur",
-      "name": "Sobotni wieczÃ³r",
-      "tagColor": "#C04A3E",
-      "closed": false
     }
   ],
   "albums": [
@@ -45,28 +39,6 @@
       "genre": "Soul",
       "mood": "Melancholijny",
       "year": "1965",
-      "cover": ""
-    },
-    {
-      "id": "mqqv951r3lv4",
-      "crateId": "mqqv951ri5ur",
-      "position": 1,
-      "artist": "Talking Heads",
-      "title": "Remain in Light",
-      "genre": "Rock",
-      "mood": "Energetyczny",
-      "year": "1980",
-      "cover": ""
-    },
-    {
-      "id": "mqqv951rfspc",
-      "crateId": "mqqv951ri5ur",
-      "position": 2,
-      "artist": "Curtis Mayfield",
-      "title": "Super Fly",
-      "genre": "Funk",
-      "mood": "Impreza",
-      "year": "1972",
       "cover": ""
     },
     {
