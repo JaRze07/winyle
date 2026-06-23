@@ -733,9 +733,12 @@ function openCapture(crate){
     let mood=d.mood||'',rating=0;
     const addBtnLabel=continueScan?'Dodaj i skanuj następny':'Dodaj do skrzynki';
     content().innerHTML=`
-      <div class="cover-prev" id="resCover" style="position:relative">
-        ${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">♪</div>'}
-        <button class="btn ghost" id="changeCover" style="position:absolute;bottom:10px;right:10px;padding:6px 12px;font-size:13px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3)">📷 Zmień</button>
+      <div style="position:relative">
+        <button class="dots-btn" id="editAlbum" style="position:absolute;top:8px;right:8px;z-index:2;font-size:18px;padding:6px 10px">✏️</button>
+        <div class="cover-prev" id="resCover" style="position:relative">
+          ${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">♪</div>'}
+          <button class="btn ghost" id="changeCover" style="position:absolute;bottom:10px;right:10px;padding:6px 12px;font-size:13px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3)">📷 Zmień</button>
+        </div>
       </div>
       <input type="file" id="resCoverFile" accept="image/*" capture="environment" hidden>
       <div style="text-align:center;padding:10px 0">
@@ -747,10 +750,7 @@ function openCapture(crate){
       <select class="sel" id="crateSel2" style="margin-top:8px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
       <button class="btn" id="addResult" style="margin-top:14px;width:100%;font-size:16px;padding:16px">${addBtnLabel}</button>
       ${continueScan?'<button class="btn ghost" id="addOnly" style="margin-top:8px;width:100%;font-size:14px">Dodaj i zakończ</button>':''}
-      <div style="display:flex;justify-content:center;gap:20px;margin-top:12px">
-        <a href="#" id="editAlbum" style="color:var(--amber);font-size:14px">✏️ Edytuj szczegóły</a>
-        <a href="#" id="backToMethods" style="color:var(--faint);font-size:14px">← Szukaj ponownie</a>
-      </div>`;
+      <button class="btn ghost" id="backToMethods" style="margin-top:10px;width:100%;font-size:15px;padding:14px">← Szukaj ponownie</button>`;
 
     // star handlers
     content().querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
@@ -761,10 +761,10 @@ function openCapture(crate){
     const coverFile=content().querySelector('#resCoverFile');
     content().querySelector('#changeCover').onclick=()=>coverFile.click();
     coverFile.onchange=e=>{const f=e.target.files[0];if(!f)return;downscale(f).then(url=>{if(url){coverVal=url;coverIsLocal=true;content().querySelector('#resCover').innerHTML='<img src="'+url+'" alt=""><button class="btn ghost" id="changeCover2" style="position:absolute;bottom:10px;right:10px;padding:6px 12px;font-size:13px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3)">📷 Zmień</button>';content().querySelector('#changeCover2').onclick=()=>coverFile.click();}});};
-    // edit — switch to manual form pre-filled with current data
-    content().querySelector('#editAlbum').onclick=e=>{e.preventDefault();showManualPrefilled(d,coverVal,coverIsLocal);};
+    // edit pencil — switch to manual form pre-filled with current data
+    content().querySelector('#editAlbum').onclick=()=>showManualPrefilled(d,coverVal,coverIsLocal);
     // back
-    content().querySelector('#backToMethods').onclick=e=>{e.preventDefault();showMethods();};
+    content().querySelector('#backToMethods').onclick=()=>showMethods();
     // add helper
     const doAdd=async()=>{
       const targetId=(content().querySelector('#crateSel2')||content().querySelector('#crateSel')).value;
@@ -1172,7 +1172,7 @@ function renderSettings(){
         <div style="font-size:14px;color:var(--paper-2)">Skrzynek: <b>${state.crates.length}</b></div>
         <div style="font-size:14px;color:var(--paper-2)">Płyt: <b>${state.albums.length}</b></div>
       </div>
-      <div style="text-align:center;padding:12px 0;font-size:12px;color:var(--faint)">Wersja 8 · ${new Date().toLocaleDateString('pl')}</div>
+      <div style="text-align:center;padding:12px 0;font-size:12px;color:var(--faint)">Wersja 9 · ${new Date().toLocaleDateString('pl')}</div>
     </div>`;
   m.querySelector('#syncPush').onclick=async()=>{
     const st=m.querySelector('#syncStatus');
