@@ -633,14 +633,18 @@ function openCapture(crate){
   }
 
   /* ---- Barcode scan ---- */
-  function doBarcode(){
-    content().innerHTML=`<div class="spin"><div class="ring"></div>Otwieranie skanera…</div>`;
+    function doBarcode(){
+    content().innerHTML=`<div class="spin"><div class="ring"></div>Otwieranie skanera…</div><div style="text-align:center;margin-top:16px"><a href="#" id="scanExit" style="color:var(--amber);font-size:15px">← Wróć</a></div>`;
+    const exitLink=content().querySelector('#scanExit');
+    if(exitLink) exitLink.onclick=e=>{e.preventDefault();showMethods();};
     openBarcodeScanner(async code=>{
-      content().innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod ${esc(code)}…</div>`;
+      content().innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod ${esc(code)}…</div><div style="text-align:center;margin-top:16px"><a href="#" id="lookupExit" style="color:var(--faint);font-size:14px">Anuluj</a></div>`;
+      const le=content().querySelector('#lookupExit');if(le)le.onclick=ev=>{ev.preventDefault();showMethods();};
       const d=await barcodeLookup(code);
       if(d&&(d.title||d.artist)){
         // enrich with genre+mood from Claude and cover from iTunes
-        content().innerHTML=`<div class="spin"><div class="ring"></div>Pobieram szczegóły…</div>`;
+        content().innerHTML=`<div class="spin"><div class="ring"></div>Pobieram szczegóły…</div><div style="text-align:center;margin-top:16px"><a href="#" id="detExit" style="color:var(--faint);font-size:14px">Anuluj</a></div>`;
+        const de=content().querySelector('#detExit');if(de)de.onclick=ev=>{ev.preventDefault();showMethods();};
         try{
           const [claude,itunes]=await Promise.all([
             CONFIG.CLAUDE_PROXY?claudeFind([d.artist,d.title].filter(Boolean).join(' — ')):null,
@@ -1168,6 +1172,7 @@ function renderSettings(){
         <div style="font-size:14px;color:var(--paper-2)">Skrzynek: <b>${state.crates.length}</b></div>
         <div style="font-size:14px;color:var(--paper-2)">Płyt: <b>${state.albums.length}</b></div>
       </div>
+      <div style="text-align:center;padding:12px 0;font-size:12px;color:var(--faint)">Wersja 8 · ${new Date().toLocaleDateString('pl')}</div>
     </div>`;
   m.querySelector('#syncPush').onclick=async()=>{
     const st=m.querySelector('#syncStatus');
