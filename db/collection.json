@@ -68,6 +68,18 @@
       "mood": "Impreza",
       "year": "1972",
       "cover": ""
+    },
+    {
+      "id": "mqqwpi7jmu2z",
+      "crateId": "mqqv951rrqwe",
+      "position": 4,
+      "artist": "The Beatles",
+      "title": "Abbey Road",
+      "genre": "Rock",
+      "mood": "",
+      "year": "1969",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/48/53/43/485343e3-dd6a-0034-faec-f4b6403f8108/13UMGIM63890.rgb.jpg/600x600bb.jpg",
+      "rating": 0
     }
   ],
   "covers": {}
