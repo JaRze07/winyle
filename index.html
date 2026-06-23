@@ -146,6 +146,7 @@
   .searchbar .si{color:var(--paper-2);font-size:22px}
   .res-loc{font-size:14px;color:var(--amber);white-space:nowrap;font-weight:600}
   .sectlabel{font-size:14px;font-weight:700;color:var(--paper-2);margin:20px 2px 10px}
+  .card{background:rgba(255,255,255,.06);border-radius:14px;border:1px solid rgba(255,255,255,.08)}
   .toast{position:fixed;bottom:118px;left:50%;transform:translateX(-50%);background:var(--paper);color:#2a1808;font-weight:600;font-size:15px;padding:12px 20px;border-radius:999px;z-index:80;box-shadow:var(--shadow);animation:fade .2s;max-width:90%;text-align:center}
   .page-h,.lead,.sectlabel,.backlink,.counter,.empty{text-shadow:0 1px 2px rgba(0,0,0,.45)}
 </style>
@@ -164,7 +165,7 @@
 /* ===== storage =====
    Online sync via Supabase when configured (CONFIG below), otherwise on-device
    localStorage. Same key/value interface either way. */
-const CONFIG={ SUPABASE_URL:'', SUPABASE_KEY:'', CLAUDE_PROXY:'' };   // SUPABASE_*: online sync · CLAUDE_PROXY: optional smart lookup
+const CONFIG={ SUPABASE_URL:'', SUPABASE_KEY:'', CLAUDE_PROXY:'https://winyle-api.winyle-jr.workers.dev/api/claude', WORKER_URL:'https://winyle-api.winyle-jr.workers.dev' };   // SUPABASE_*: online sync · CLAUDE_PROXY: optional smart lookup · WORKER_URL: cloud sync
 const ONLINE=()=>!!(CONFIG.SUPABASE_URL&&CONFIG.SUPABASE_KEY);
 function supaHeaders(extra){ return Object.assign({apikey:CONFIG.SUPABASE_KEY,Authorization:'Bearer '+CONFIG.SUPABASE_KEY},extra||{}); }
 async function sget(k){
@@ -186,6 +187,33 @@ async function sset(k,v){
     }catch(e){}
   }
 }
+/* ===== cloud sync (GitHub via Worker) ===== */
+async function cloudPull(){
+  if(!CONFIG.WORKER_URL) return null;
+  try{
+    const r=await fetch(CONFIG.WORKER_URL+'/api/db');
+    if(!r.ok) return null;
+    const d=await r.json();
+    if(d && d.albums && d.albums.length) return d;
+    return null;
+  }catch(e){ return null; }
+}
+async function cloudPush(){
+  if(!CONFIG.WORKER_URL) return false;
+  try{
+    // gather all covers
+    const covers={};
+    for(const a of state.albums){
+      const c=await getCover(a.id);
+      if(c) covers[a.id]=c;
+    }
+    const r=await fetch(CONFIG.WORKER_URL+'/api/db',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({crates:state.crates,albums:state.albums,covers})
+    });
+    return r.ok;
+  }catch(e){ return false; }
+}
 
 /* ===== data ===== */
 const MOODS=['Spokojny','Energetyczny','Nocny','Skupienie','Impreza','Melancholijny','Surowy'];
@@ -198,9 +226,18 @@ function plPly(n){ if(n===1)return'płyta'; const d=n%10,dd=n%100; if(d>=2&&d<=4
 async function load(){
   const meta=await sget('winyle-meta');
   if(meta){state.crates=meta.crates||[];state.albums=meta.albums||[];}
-  else{seed();await persist();}
+  else{
+    // try loading from cloud before seeding demo data
+    const cloud=await cloudPull();
+    if(cloud){
+      state.crates=cloud.crates||[];state.albums=cloud.albums||[];
+      // restore covers from cloud
+      if(cloud.covers){ for(const[id,d]of Object.entries(cloud.covers)){ await saveCover(id,d); } }
+      await sset('winyle-meta',{crates:state.crates,albums:state.albums});
+    } else { seed();await persist(); }
+  }
 }
-async function persist(){ await sset('winyle-meta',{crates:state.crates,albums:state.albums}); }
+async function persist(){ await sset('winyle-meta',{crates:state.crates,albums:state.albums}); cloudPush(); }
 async function saveCover(id,d){ coverCache.set(id,d); await sset('winyle-cover-'+id,d); }
 async function getCover(id){ if(coverCache.has(id))return coverCache.get(id); const d=await sget('winyle-cover-'+id); if(d)coverCache.set(id,d); return d; }
 
@@ -356,9 +393,10 @@ function render(){
   if(state.tab==='crates')return renderCrates();
   if(state.tab==='listen')return renderListen();
   if(state.tab==='search')return renderSearch();
+  if(state.tab==='settings')return renderSettings();
 }
 function renderNav(){
-  const tabs=[['crates','▤','Skrzynki'],['listen','◎','Słuchaj'],['search','⌕','Szukaj']];
+  const tabs=[['crates','▤','Skrzynki'],['listen','◎','Słuchaj'],['search','⌕','Szukaj'],['settings','⚙','Więcej']];
   document.getElementById('nav').innerHTML=tabs.map(([id,ic,lbl])=>
     `<button class="${state.tab===id&&!(id==='crates'&&state.crateId)?'on':''}" data-tab="${id}"><span class="ni">${ic}</span>${lbl}</button>`).join('');
   document.querySelectorAll('#nav button').forEach(b=>b.onclick=()=>{state.tab=b.dataset.tab;state.crateId=null;render();});
@@ -726,6 +764,65 @@ function renderSearch(){
   inp.oninput=()=>{searchQ=inp.value;const pos=inp.selectionStart;renderSearch();const ni=main().querySelector('#sq');ni.focus();ni.setSelectionRange(pos,pos);};
   m.querySelectorAll('[data-sg]').forEach(c=>c.onclick=()=>{searchGenre=c.dataset.sg;renderSearch();});
   m.querySelectorAll('[data-go]').forEach(r=>r.onclick=()=>{state.tab='crates';state.crateId=r.dataset.go;render();});
+}
+
+/* settings */
+function renderSettings(){
+  const m=main();
+  m.innerHTML=`<h2 class="page-h">Ustawienia</h2>
+    <div style="padding:0 4px">
+      <div class="card" style="padding:18px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:16px;margin-bottom:10px">☁ Synchronizacja</div>
+        <div style="font-size:14px;color:var(--paper-2);margin-bottom:14px">Twoja kolekcja jest synchronizowana z chmurą (GitHub). Możesz ręcznie wymusić synchronizację.</div>
+        <div style="display:flex;gap:10px">
+          <button class="btn ghost" id="syncPush" style="flex:1;font-size:14px">↑ Wyślij do chmury</button>
+          <button class="btn ghost" id="syncPull" style="flex:1;font-size:14px">↓ Pobierz z chmury</button>
+        </div>
+        <div id="syncStatus" style="font-size:13px;color:var(--faint);margin-top:10px;text-align:center"></div>
+      </div>
+      <div class="card" style="padding:18px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:16px;margin-bottom:10px">🔄 Aktualizacja aplikacji</div>
+        <div style="font-size:14px;color:var(--paper-2);margin-bottom:14px">Pobierz najnowszą wersję aplikacji. Twoja kolekcja zostanie zachowana w chmurze.</div>
+        <button class="btn" id="updateApp" style="width:100%;font-size:14px">Pobierz najnowszą wersję</button>
+        <div id="updateStatus" style="font-size:13px;color:var(--faint);margin-top:10px;text-align:center"></div>
+      </div>
+      <div class="card" style="padding:18px;margin-bottom:14px">
+        <div style="font-weight:700;font-size:16px;margin-bottom:10px">📊 Kolekcja</div>
+        <div style="font-size:14px;color:var(--paper-2)">Skrzynek: <b>${state.crates.length}</b></div>
+        <div style="font-size:14px;color:var(--paper-2)">Płyt: <b>${state.albums.length}</b></div>
+      </div>
+    </div>`;
+  m.querySelector('#syncPush').onclick=async()=>{
+    const st=m.querySelector('#syncStatus');
+    st.textContent='Wysyłanie…'; st.style.color='var(--amber)';
+    const ok=await cloudPush();
+    st.textContent=ok?'✓ Wysłano pomyślnie':'✗ Błąd wysyłania'; st.style.color=ok?'var(--keep)':'var(--oxblood)';
+  };
+  m.querySelector('#syncPull').onclick=async()=>{
+    const st=m.querySelector('#syncStatus');
+    st.textContent='Pobieranie…'; st.style.color='var(--amber)';
+    const cloud=await cloudPull();
+    if(cloud){
+      state.crates=cloud.crates||[];state.albums=cloud.albums||[];
+      if(cloud.covers){ for(const[id,d]of Object.entries(cloud.covers)) await saveCover(id,d); }
+      await sset('winyle-meta',{crates:state.crates,albums:state.albums});
+      st.textContent='✓ Pobrano '+state.albums.length+' płyt'; st.style.color='var(--keep)';
+    } else { st.textContent='✗ Brak danych w chmurze lub błąd'; st.style.color='var(--oxblood)'; }
+  };
+  m.querySelector('#updateApp').onclick=async()=>{
+    const st=m.querySelector('#updateStatus');
+    st.textContent='Wysyłanie danych do chmury…'; st.style.color='var(--amber)';
+    await cloudPush();
+    st.textContent='Czyszczenie cache…';
+    if('serviceWorker' in navigator){
+      const regs=await navigator.serviceWorker.getRegistrations();
+      for(const r of regs) await r.unregister();
+      const keys=await caches.keys();
+      for(const k of keys) await caches.delete(k);
+    }
+    st.textContent='Przeładowanie…';
+    location.reload(true);
+  };
 }
 
 /* ===== boot ===== */
