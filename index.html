@@ -68,6 +68,7 @@
   /* detail */
   .det-head{display:flex;align-items:center;gap:14px;margin-bottom:4px}
   .det-head h2{font-family:var(--disp);font-weight:800;font-size:28px;margin:0;letter-spacing:-.01em}
+  .dots-btn{background:none;border:1.5px solid var(--line);color:var(--paper);font-size:22px;padding:8px 14px;border-radius:12px;cursor:pointer;line-height:1;letter-spacing:2px}
   .backlink{font-size:16px;color:var(--paper-2);display:flex;align-items:center;gap:7px;margin:4px 0 12px;font-weight:600}
   .crate-actions{display:flex;gap:11px;margin:8px 0 18px}
   .crate-actions .btn{flex:1}
@@ -414,20 +415,8 @@ function openBarcodeScanner(cb,onCancel){
 function crateAlbums(id){ return state.albums.filter(a=>a.crateId===id).sort((x,y)=>x.position-y.position); }
 function neighborInfo(a){
   const albs=crateAlbums(a.crateId);
-  const idx=albs.findIndex(x=>x.id===a.id);
   const crate=state.crates.find(c=>c.id===a.crateId);
-  const prev=idx>0?albs[idx-1]:null;
-  const next=idx<albs.length-1?albs[idx+1]:null;
-  const total=albs.length;
-  let txt=esc(crate?crate.name:'')+'  ·  miejsce #'+a.position+' z '+total;
-  if(prev||next){
-    txt+='<div class="nbrs">';
-    if(prev) txt+='<span class="nbr">\u2190 '+esc(prev.artist||'')+' \u2014 '+esc(prev.title||'')+'</span>';
-    if(prev&&next) txt+=' ';
-    if(next) txt+='<span class="nbr">'+esc(next.artist||'')+' \u2014 '+esc(next.title||'')+' \u2192</span>';
-    txt+='</div>';
-  }
-  return txt;
+  return esc(crate?crate.name:'')+'<br><span style="font-family:var(--mono);color:var(--amber)">#'+a.position+'</span> <span style="color:var(--faint)">z '+albs.length+'</span>';
 }
 function usedGenres(){ return [...new Set(state.albums.map(a=>(a.genre||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl')); }
 function usedMoods(){ return [...new Set(state.albums.map(a=>(a.mood||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'pl')); }
@@ -509,6 +498,7 @@ function renderCrateDetail(){
       ${crateThumbHTML(c,44,54)}
       <div style="flex:1"><h2>${esc(c.name)}</h2>
         <div class="crate-meta">${albums.length} ${plPly(albums.length)} · ${c.closed?'zamknięta':'otwarta — pakowanie'}</div></div>
+      <button class="dots-btn" id="crateMenu">&#x22EF;</button>
     </div>
     ${albums.length?`<div class="spines">${spines}</div>`:''}
     <div class="crate-actions">
@@ -525,6 +515,36 @@ function renderCrateDetail(){
   m.querySelectorAll('[data-jump]').forEach(s=>s.onclick=()=>{
     const r=m.querySelector('[data-row="'+s.dataset.jump+'"]');
     if(r){r.scrollIntoView({behavior:'smooth',block:'center'});r.style.transition='background .4s';r.style.background='var(--ink-3)';setTimeout(()=>r.style.background='',700);}
+  });
+  document.getElementById('crateMenu').onclick=()=>{
+    const sheet=modal(`<h2>Edytuj skrzynk\u0119</h2>
+      <label class="fld"><span>Nazwa</span><input id="editCrateName" value="${esc(c.name)}" autocomplete="off"></label>
+      <button class="btn" id="saveCrateName" style="width:100%;margin-bottom:12px">Zapisz nazw\u0119</button>
+      <button class="btn ghost" id="deleteCrate" style="width:100%;color:var(--oxblood);border-color:var(--oxblood)">Usu\u0144 skrzynk\u0119</button>`);
+    sheet.querySelector('#saveCrateName').onclick=async()=>{
+      const newName=sheet.querySelector('#editCrateName').value.trim();
+      if(newName){c.name=newName;await persist();closeModal();render();}
+    };
+    sheet.querySelector('#deleteCrate').onclick=async()=>{
+      if(albums.length>0){
+        sheet.querySelector('#deleteCrate').insertAdjacentHTML('afterend','<button class="btn" id="confirmDelete" style="width:100%;margin-top:8px;background:var(--oxblood)">Na pewno usu\u0144 ('+albums.length+' p\u0142yt zginie)</button>');
+        sheet.querySelector('#confirmDelete').onclick=async()=>{
+          state.albums=state.albums.filter(a=>a.crateId!==c.id);
+          state.crates=state.crates.filter(x=>x.id!==c.id);
+          await persist();closeModal();state.crateId=null;render();
+        };
+      } else {
+        state.crates=state.crates.filter(x=>x.id!==c.id);
+        await persist();closeModal();state.crateId=null;render();
+      }
+    };
+  };
+  m.querySelectorAll('[data-row]').forEach(r=>{
+    r.onclick=e=>{
+      if(e.target.closest('[data-handle]'))return;
+      const a=state.albums.find(x=>x.id===r.dataset.row);
+      if(a) openAlbumDetail(a);
+    };
   });
   enableDrag(c.id);
 }
@@ -1034,6 +1054,27 @@ function enableCarouselSwipe(card){
   card.addEventListener('pointercancel',up);
 }
 
+/* album detail — full-screen card view */
+function openAlbumDetail(a){
+  const crate=state.crates.find(c=>c.id===a.crateId);
+  const albs=crateAlbums(a.crateId);
+  const idx=albs.findIndex(x=>x.id===a.id);
+  const total=albs.length;
+  let posVisual='';
+  const visStart=Math.max(0,idx-2);
+  const visEnd=Math.min(albs.length,idx+3);
+  for(let i=visStart;i<visEnd;i++){
+    const aa=albs[i];
+    const isCurrent=i===idx;
+    posVisual+='<div class="pos-strip '+(isCurrent?'current':'')+'" style="display:flex;align-items:center;gap:10px;padding:'+(isCurrent?'12px 14px':'8px 14px')+';'+(isCurrent?'background:rgba(226,166,62,.15);border-radius:10px;border:1.5px solid var(--amber);':'')+'"><span style="font-family:var(--mono);font-weight:700;font-size:'+(isCurrent?'20px':'15px')+';color:'+(isCurrent?'var(--amber)':'var(--faint)')+';">#'+aa.position+'</span><span style="font-size:'+(isCurrent?'17px':'14px')+';'+(isCurrent?'font-weight:700;color:var(--paper)':'color:var(--faint)')+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(aa.artist||'')+' \u2014 '+esc(aa.title||'')+'</span></div>';
+  }
+  if(visStart>0) posVisual='<div style="text-align:center;color:var(--faint);font-size:13px;padding:4px">\u27F5 ty\u0142 skrzynki</div>'+posVisual;
+  if(visEnd<albs.length) posVisual+='<div style="text-align:center;color:var(--faint);font-size:13px;padding:4px">prz\u00F3d skrzynki \u27F6</div>';
+  const sheet=modal('<div class="cover-prev" style="height:240px;border-radius:16px">'+(a.cover?'<img data-cover="'+a.id+'" alt="">':'<div class="ph" style="font-size:40px">\u266A</div>')+'</div><div style="text-align:center;padding:14px 0 6px"><div style="font-family:var(--disp);font-size:24px;font-weight:800;line-height:1.2">'+(esc(a.title)||'Bez tytu\u0142u')+'</div><div style="font-size:18px;color:var(--paper-2);margin-top:6px">'+(esc(a.artist)||'Nieznany')+'</div><div style="font-size:16px;color:var(--faint);margin-top:4px">'+(a.year||'')+' '+(a.genre?'\u00B7 '+a.genre:'')+' '+(a.mood?'\u00B7 '+a.mood:'')+'</div>'+(a.rating?'<div class="stars" style="font-size:20px;margin-top:8px">'+('\u2605'.repeat(a.rating)+'\u2606'.repeat(5-a.rating))+'</div>':'')+'</div><div class="card" style="padding:14px;margin:10px 0"><div style="font-weight:700;font-size:15px;margin-bottom:10px">\uD83D\uDCE6 '+esc(crate?crate.name:'')+' \u2014 miejsce #'+a.position+' z '+total+'</div><div style="display:flex;flex-direction:column;gap:4px">'+posVisual+'</div></div><button class="btn ghost" id="goToCrate" style="width:100%;margin-top:6px">Otw\u00F3rz skrzynk\u0119</button>');
+  hydrateCovers(sheet);
+  sheet.querySelector('#goToCrate').onclick=()=>{closeModal();state.tab='crates';state.crateId=a.crateId;render();};
+}
+
 /* ===== SEARCH ===== */
 let searchQ='',searchGenre='';
 function renderSearch(){
@@ -1048,7 +1089,7 @@ function renderSearch(){
     <div class="sectlabel">${results.length} ${plPly(results.length)}</div>
     <div id="sres">${results.length?results.map(a=>{
       const crate=state.crates.find(c=>c.id===a.crateId);
-      return `<div class="row" data-go="${a.crateId}">
+      return `<div class="row" data-go="${a.id}">
         ${a.cover?`<img class="cover" data-cover="${a.id}" alt="">`:`<div class="cover">brak okładki</div>`}
         <div class="info"><b>${esc(a.title)||'Bez tytułu'}</b><div class="sub">${esc(a.artist)} ${a.genre?'· '+a.genre:''} ${a.rating?'<span class="stars">'+('\u2605'.repeat(a.rating)+'\u2606'.repeat(5-a.rating))+'</span>':''}</div></div>
         <div style="text-align:right;min-width:100px">
@@ -1060,7 +1101,10 @@ function renderSearch(){
   const inp=m.querySelector('#sq');
   inp.oninput=()=>{searchQ=inp.value;const pos=inp.selectionStart;renderSearch();const ni=main().querySelector('#sq');ni.focus();ni.setSelectionRange(pos,pos);};
   m.querySelectorAll('[data-sg]').forEach(c=>c.onclick=()=>{searchGenre=c.dataset.sg;renderSearch();});
-  m.querySelectorAll('[data-go]').forEach(r=>r.onclick=()=>{state.tab='crates';state.crateId=r.dataset.go;render();});
+  m.querySelectorAll('[data-go]').forEach(r=>r.onclick=()=>{
+    const a=state.albums.find(x=>x.id===r.dataset.go);
+    if(a) openAlbumDetail(a);
+  });
 }
 
 /* settings */
