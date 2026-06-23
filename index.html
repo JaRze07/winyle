@@ -7,15 +7,12 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#2e2014">
 <link rel="apple-touch-icon" href="icon-192.png">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700;9..144,900&family=Spline+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@500;600;700&subset=latin,latin-ext&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#241405; --ink-2:#3a2414; --ink-3:#4a3119; --line:#6b4a28;
     --paper:#F6E8CE; --paper-2:#D8C09A; --faint:#B49B73;
     --amber:#E2A63E; --oxblood:#C75640; --keep:#9AAF5C;
-    --disp:'Fraunces',serif; --body:'Spline Sans',sans-serif; --mono:'Spline Sans Mono',monospace;
+    --disp:Georgia,'Times New Roman',serif; --body:system-ui,-apple-system,'Segoe UI',Roboto,sans-serif; --mono:ui-monospace,'Cascadia Mono',monospace;
     --shadow:0 14px 30px rgba(0,0,0,.5);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -284,7 +281,14 @@ function itunesLookup(artist,title){
     const s=document.createElement('script'); let done=false;
     const cleanup=()=>{ try{delete window[cb];}catch(e){} s.remove(); };
     window[cb]=data=>{ done=true; cleanup();
-      const r=(data.results||[]).find(x=>x.artworkUrl100)||(data.results||[])[0];
+      const results=data.results||[];
+      const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+      const titleNorm=norm(title);
+      // prefer exact title match, then partial match, then any with artwork
+      const r=results.find(x=>x.artworkUrl100&&norm(x.collectionName)===titleNorm)
+        ||results.find(x=>x.artworkUrl100&&norm(x.collectionName).includes(titleNorm))
+        ||results.find(x=>x.artworkUrl100)
+        ||results[0];
       if(!r){ res(null); return; }
       res({
         cover: r.artworkUrl100? r.artworkUrl100.replace('100x100bb','600x600bb') : null,
@@ -714,36 +718,36 @@ function openCapture(crate){
     let mood='',rating=0;
     const addBtnLabel=continueScan?'Dodaj i skanuj następny':'Dodaj do skrzynki';
     content().innerHTML=`
-      <div class="cover-prev" id="resCover">${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">Brak okładki<br><small style="color:var(--amber);cursor:pointer" id="addCoverBtn">+ Zrób zdjęcie</small></div>'}</div>
+      <div class="cover-prev" id="resCover" style="position:relative">
+        ${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">♪</div>'}
+        <button class="btn ghost" id="changeCover" style="position:absolute;bottom:10px;right:10px;padding:6px 12px;font-size:13px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3)">📷 Zmień</button>
+      </div>
       <input type="file" id="resCoverFile" accept="image/*" capture="environment" hidden>
       <div style="text-align:center;padding:10px 0">
-        <div style="font-size:20px;font-weight:700">${esc(d.title||'')}</div>
-        <div style="font-size:16px;color:var(--paper-2);margin-top:4px">${esc(d.artist||'')} ${d.year?'· '+d.year:''} ${d.genre?'· '+d.genre:''}</div>
+        <div style="font-size:22px;font-weight:700">${esc(d.title||'')}</div>
+        <div style="font-size:17px;color:var(--paper-2);margin-top:6px">${esc(d.artist||'')}</div>
+        <div style="font-size:15px;color:var(--faint);margin-top:4px">${[d.year,d.genre,d.mood].filter(Boolean).join(' · ')}</div>
       </div>
       <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">★</span>').join('')}</div></div>
-      <div class="fld"><label>Nastrój</label><div id="mPick" class="chiprow">${MOODS.map(m=>'<span class="chip" data-m="'+m+'">'+m+'</span>').join('')}</div></div>
       <select class="sel" id="crateSel2" style="margin-top:8px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
       <button class="btn" id="addResult" style="margin-top:14px;width:100%;font-size:16px;padding:16px">${addBtnLabel}</button>
       ${continueScan?'<button class="btn ghost" id="addOnly" style="margin-top:8px;width:100%;font-size:14px">Dodaj i zakończ</button>':''}
-      <div style="text-align:center;margin-top:10px"><a href="#" id="backToMethods" style="color:var(--amber);font-size:14px">← Szukaj ponownie</a></div>`;
+      <div style="display:flex;justify-content:center;gap:20px;margin-top:12px">
+        <a href="#" id="editAlbum" style="color:var(--amber);font-size:14px">✏️ Edytuj szczegóły</a>
+        <a href="#" id="backToMethods" style="color:var(--faint);font-size:14px">← Szukaj ponownie</a>
+      </div>`;
 
     // star handlers
     content().querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
       rating=+s.dataset.r;
       content().querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
     });
-    // mood handlers
-    content().querySelectorAll('#mPick .chip').forEach(c=>c.onclick=()=>{
-      mood=mood===c.dataset.m?'':c.dataset.m;
-      content().querySelectorAll('#mPick .chip').forEach(x=>x.classList.toggle('on',x.dataset.m===mood));
-    });
-    // cover photo for missing covers
-    const addCoverBtn=content().querySelector('#addCoverBtn');
-    if(addCoverBtn){
-      const coverFile=content().querySelector('#resCoverFile');
-      addCoverBtn.onclick=()=>coverFile.click();
-      coverFile.onchange=e=>{const f=e.target.files[0];if(!f)return;downscale(f).then(url=>{if(url){coverVal=url;coverIsLocal=true;content().querySelector('#resCover').innerHTML='<img src="'+url+'" alt="">';}});};
-    }
+    // change cover — always available
+    const coverFile=content().querySelector('#resCoverFile');
+    content().querySelector('#changeCover').onclick=()=>coverFile.click();
+    coverFile.onchange=e=>{const f=e.target.files[0];if(!f)return;downscale(f).then(url=>{if(url){coverVal=url;coverIsLocal=true;content().querySelector('#resCover').innerHTML='<img src="'+url+'" alt=""><button class="btn ghost" id="changeCover2" style="position:absolute;bottom:10px;right:10px;padding:6px 12px;font-size:13px;background:rgba(0,0,0,.7);border:1px solid rgba(255,255,255,.3)">📷 Zmień</button>';content().querySelector('#changeCover2').onclick=()=>coverFile.click();}});};
+    // edit — switch to manual form pre-filled with current data
+    content().querySelector('#editAlbum').onclick=e=>{e.preventDefault();showManualPrefilled(d,coverVal,coverIsLocal);};
     // back
     content().querySelector('#backToMethods').onclick=e=>{e.preventDefault();showMethods();};
     // add helper
@@ -772,7 +776,7 @@ function openCapture(crate){
   }
 
   /* ---- Manual form ---- */
-  function showManual(){
+  function showManual(prefill){
     let coverVal=null,coverIsLocal=false,mood='',rating=0;
     content().innerHTML=`
       <div id="prev" class="cover-prev"><div class="ph">Zrób zdjęcie lub znajdź album</div></div>
@@ -791,6 +795,22 @@ function openCapture(crate){
       <select class="sel" id="crateSel3" style="margin-top:12px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
       <button class="btn" id="addManual" style="margin-top:14px;width:100%">Dodaj do skrzynki</button>
       <div style="text-align:center;margin-top:10px"><a href="#" id="backToMethods3" style="color:var(--amber);font-size:14px">← Wróć</a></div>`;
+
+    if(prefill){
+      if(prefill.artist)content().querySelector('#artist').value=prefill.artist;
+      if(prefill.title)content().querySelector('#title').value=prefill.title;
+      if(prefill.year)content().querySelector('#year').value=prefill.year;
+      if(prefill.genre)content().querySelector('#genre').value=prefill.genre;
+      if(prefill.cover){coverVal=prefill.cover;coverIsLocal=prefill.coverIsLocal||false;
+        content().querySelector('#prev').innerHTML='<img src="'+prefill.cover+'" alt="">';
+      }
+      if(prefill.mood){mood=prefill.mood;
+        content().querySelectorAll('#mPick .chip').forEach(x=>x.classList.toggle('on',x.dataset.m===mood));
+      }
+      if(prefill.rating){rating=prefill.rating;
+        content().querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
+      }
+    }
 
     const setV=(id,v)=>{if(v){const el=content().querySelector('#'+id);if(el&&!el.value)el.value=v;}};
     const showImg=src=>{const p=content().querySelector('#prev');p.innerHTML=`<img src="${src}" alt="">`;};
@@ -888,6 +908,8 @@ function openCapture(crate){
       showMethods();
     };
   }
+
+  function showManualPrefilled(d,cv,cvLocal){showManual({artist:d.artist,title:d.title,year:d.year,genre:d.genre,mood:d.mood||'',cover:cv,coverIsLocal:cvLocal,rating:0});}
 
   showMethods();
   sheet.querySelector('.grab').onclick=()=>closeModal();
@@ -1016,7 +1038,10 @@ function renderCarousel(dir){
   document.getElementById('bk').onclick=renderListen;
   document.getElementById('prev').onclick=()=>step(-1);
   document.getElementById('next').onclick=()=>step(1);
-  enableCarouselSwipe(document.getElementById('centerCard'));
+  const cc=document.getElementById('centerCard');
+  enableCarouselSwipe(cc);
+  let tapT=0;cc.addEventListener('pointerdown',()=>{tapT=Date.now();});
+  cc.addEventListener('pointerup',e=>{if(Date.now()-tapT<300){const aa=deck[cIdx];if(aa)openAlbumDetail(aa);}});
 }
 function step(d){
   const target=cIdx+d;
