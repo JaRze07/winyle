@@ -17,7 +17,7 @@
     {
       "id": "mqqv951r3nm2",
       "crateId": "mqqv951rrqwe",
-      "position": 1,
+      "position": 2,
       "artist": "Bill Evans",
       "title": "Sunday at the Village Vanguard",
       "genre": "Jazz",
@@ -72,7 +72,7 @@
     {
       "id": "mqqwpi7jmu2z",
       "crateId": "mqqv951rrqwe",
-      "position": 2,
+      "position": 1,
       "artist": "The Beatles",
       "title": "Abbey Road",
       "genre": "Rock",
