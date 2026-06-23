@@ -54,6 +54,18 @@
       "year": "2016",
       "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music20/v4/e9/6b/86/e96b8682-b2f3-a7cc-54f7-d0092a61a751/886445917055.jpg/600x600bb.jpg",
       "rating": 0
+    },
+    {
+      "id": "mqr1jqx3nd2q",
+      "crateId": "mqr13qgs7pv4",
+      "position": 5,
+      "artist": "Erroll Garner",
+      "title": "Concert by the Sea",
+      "genre": "Jazz",
+      "mood": "Spokojny",
+      "year": "1955",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/93/9d/e1/939de197-b680-4c92-4141-08fc38a1d6d1/mzi.trcydnrm.jpg/600x600bb.jpg",
+      "rating": 0
     }
   ],
   "covers": {}
