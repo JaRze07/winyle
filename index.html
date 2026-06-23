@@ -639,6 +639,16 @@ function openCapture(crate){
       content().innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod ${esc(code)}…</div>`;
       const d=await barcodeLookup(code);
       if(d&&(d.title||d.artist)){
+        // enrich with genre+mood from Claude and cover from iTunes
+        content().innerHTML=`<div class="spin"><div class="ring"></div>Pobieram szczegóły…</div>`;
+        try{
+          const [claude,itunes]=await Promise.all([
+            CONFIG.CLAUDE_PROXY?claudeFind([d.artist,d.title].filter(Boolean).join(' — ')):null,
+            getApiCover(d.artist,d.title)
+          ]);
+          if(claude){if(claude.genre&&!d.genre)d.genre=claude.genre;if(claude.mood)d.mood=claude.mood;}
+          if(itunes){if(itunes.cover&&!d.cover)d.cover=itunes.cover;if(itunes.genre&&!d.genre)d.genre=itunes.genre;if(itunes.year&&!d.year)d.year=itunes.year;}
+        }catch(e){}
         showResult(d,true);
       } else {
         content().innerHTML=`<div style="text-align:center;padding:20px 0">
@@ -680,11 +690,12 @@ function openCapture(crate){
         });
         const d=await res.json();
         if(d&&(d.title||d.artist)){
-          // fetch proper cover from database instead of using user's photo
+          // fetch proper cover + enrich genre from iTunes
           const apiCover=await getApiCover(d.artist||'',d.title||'');
           if(apiCover&&apiCover.cover) d.cover=apiCover.cover;
           else d.cover=dataUrl; // fallback to user photo if no db cover
           if(apiCover&&apiCover.year&&!d.year) d.year=apiCover.year;
+          if(apiCover&&apiCover.genre&&!d.genre) d.genre=apiCover.genre;
           showResult(d);
         } else {
           content().innerHTML=`<div style="text-align:center;padding:20px 0">
@@ -715,7 +726,7 @@ function openCapture(crate){
   function showResult(d,continueScan){
     let coverVal=d.cover||'';
     let coverIsLocal=false;
-    let mood='',rating=0;
+    let mood=d.mood||'',rating=0;
     const addBtnLabel=continueScan?'Dodaj i skanuj następny':'Dodaj do skrzynki';
     content().innerHTML=`
       <div class="cover-prev" id="resCover" style="position:relative">
