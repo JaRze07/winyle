@@ -1,52 +1,13 @@
 {
   "crates": [
     {
-      "id": "mqqze2n7r56r",
-      "name": "Niedzielny jazz",
-      "tagColor": "#EFAD45",
-      "closed": true
-    },
-    {
       "id": "mqqze2n73otb",
-      "name": "Sobotni wieczór",
+      "name": "Sobotni wieczÃ³r",
       "tagColor": "#C04A3E",
       "closed": false
     }
   ],
   "albums": [
-    {
-      "id": "mqqze2n7u9ud",
-      "crateId": "mqqze2n7r56r",
-      "position": 1,
-      "artist": "Bill Evans",
-      "title": "Sunday at the Village Vanguard",
-      "genre": "Jazz",
-      "mood": "Nocny",
-      "year": "1961",
-      "cover": ""
-    },
-    {
-      "id": "mqqze2n7ngbn",
-      "crateId": "mqqze2n7r56r",
-      "position": 2,
-      "artist": "John Coltrane",
-      "title": "A Love Supreme",
-      "genre": "Jazz",
-      "mood": "Skupienie",
-      "year": "1965",
-      "cover": ""
-    },
-    {
-      "id": "mqqze2n7clnt",
-      "crateId": "mqqze2n7r56r",
-      "position": 3,
-      "artist": "Nina Simone",
-      "title": "Pastel Blues",
-      "genre": "Soul",
-      "mood": "Melancholijny",
-      "year": "1965",
-      "cover": ""
-    },
     {
       "id": "mqqze2n7ioff",
       "crateId": "mqqze2n73otb",
