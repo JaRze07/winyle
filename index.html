@@ -344,7 +344,7 @@ async function claudeFind(query){
   return JSON.parse(m?m[0]:clean);
 }
 /* camera barcode scanner with manual fallback */
-function openBarcodeScanner(cb){
+function openBarcodeScanner(cb,onCancel){
   const hasDet=('BarcodeDetector' in window);
   let stream=null,raf=null,running=true;
   const ov=el(`<div class="scanov">
@@ -357,7 +357,7 @@ function openBarcodeScanner(cb){
     </div></div>`);
   document.body.appendChild(ov);
   const cleanup=()=>{running=false;if(raf)cancelAnimationFrame(raf);if(stream)stream.getTracks().forEach(t=>t.stop());ov.remove();};
-  ov.querySelector('#scanClose').onclick=cleanup;
+  ov.querySelector('#scanClose').onclick=()=>{cleanup();if(onCancel)onCancel();};
   ov.querySelector('#scanManual').onclick=()=>{
     ov.querySelector('.scanbtns').style.display='none';
     const box=el(`<div class="scanin"><input id="bcin" inputmode="numeric" placeholder="Numer kodu (EAN/UPC)"><button class="btn" id="bcok" style="width:auto;padding:14px 18px">OK</button></div>`);
@@ -367,11 +367,25 @@ function openBarcodeScanner(cb){
   if(!hasDet){ ov.querySelector('#scanmsg').textContent='Skaner kamery niedostępny tutaj — wpisz kod ręcznie'; return; }
   (async()=>{
     try{
-      stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+      stream=await navigator.mediaDevices.getUserMedia({video:{
+        facingMode:'environment',width:{ideal:1920},height:{ideal:1080},
+        focusMode:{ideal:'continuous'},exposureMode:{ideal:'continuous'},whiteBalanceMode:{ideal:'continuous'}
+      }});
       const v=ov.querySelector('#scanvid'); v.srcObject=stream; await v.play();
+      const track=stream.getVideoTracks()[0];
+      if(track&&track.applyConstraints){try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch(e){}}
       const det=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+      const scanCv=document.createElement('canvas');const scanCtx=scanCv.getContext('2d');
       const tick=async()=>{ if(!running)return;
-        try{ const codes=await det.detect(v); if(codes&&codes.length){ const code=codes[0].rawValue; cleanup(); cb(code); return; } }catch(e){}
+        try{
+          if(v.videoWidth){
+            scanCv.width=v.videoWidth;scanCv.height=v.videoHeight;
+            scanCtx.filter='contrast(1.5) brightness(1.1)';
+            scanCtx.drawImage(v,0,0);scanCtx.filter='none';
+            const codes=await det.detect(scanCv);
+            if(codes&&codes.length){ const code=codes[0].rawValue; cleanup(); cb(code); return; }
+          }
+        }catch(e){}
         raf=requestAnimationFrame(tick); };
       tick();
     }catch(e){ ov.querySelector('#scanmsg').textContent='Brak dostępu do kamery — wpisz kod ręcznie'; }
@@ -581,7 +595,7 @@ function openCapture(crate){
       content().innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod ${esc(code)}…</div>`;
       const d=await barcodeLookup(code);
       if(d&&(d.title||d.artist)){
-        showResult(d);
+        showResult(d,true);
       } else {
         content().innerHTML=`<div style="text-align:center;padding:20px 0">
           <div style="font-size:42px;margin-bottom:12px">✗</div>
@@ -591,12 +605,17 @@ function openCapture(crate){
             <button class="btn ghost" id="retryPhoto" style="flex:1">📸 Zdjęcie okładki</button>
             <button class="btn ghost" id="retryManual" style="flex:1">✏️ Ręcznie</button>
           </div>
-          <div style="margin-top:12px"><a href="#" id="retryBack" style="color:var(--amber);font-size:14px">← Wróć</a></div>
+          <button class="btn ghost" id="retryScan" style="margin-top:10px;width:100%">📷 Skanuj kolejny kod</button>
+          <div style="margin-top:10px;text-align:center"><a href="#" id="retryBack" style="color:var(--amber);font-size:14px">← Wróć</a></div>
         </div>`;
         content().querySelector('#retryPhoto').onclick=()=>doPhoto();
         content().querySelector('#retryManual').onclick=()=>showManual();
+        content().querySelector('#retryScan').onclick=()=>doBarcode();
         content().querySelector('#retryBack').onclick=e=>{e.preventDefault();showMethods();};
       }
+    },()=>{
+      /* onCancel — go back to method selection */
+      showMethods();
     });
   }
 
@@ -649,10 +668,11 @@ function openCapture(crate){
   }
 
   /* ---- Result card (after successful barcode or photo) ---- */
-  function showResult(d){
+  function showResult(d,continueScan){
     let coverVal=d.cover||'';
     let coverIsLocal=false;
     let mood='',rating=0;
+    const addBtnLabel=continueScan?'Dodaj i skanuj następny':'Dodaj do skrzynki';
     content().innerHTML=`
       <div class="cover-prev">${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">Brak okładki</div>'}</div>
       <div style="text-align:center;padding:10px 0">
@@ -662,7 +682,8 @@ function openCapture(crate){
       <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">★</span>').join('')}</div></div>
       <div class="fld"><label>Nastrój</label><div id="mPick" class="chiprow">${MOODS.map(m=>'<span class="chip" data-m="'+m+'">'+m+'</span>').join('')}</div></div>
       <select class="sel" id="crateSel2" style="margin-top:8px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
-      <button class="btn" id="addResult" style="margin-top:14px;width:100%;font-size:16px;padding:16px">Dodaj do skrzynki</button>
+      <button class="btn" id="addResult" style="margin-top:14px;width:100%;font-size:16px;padding:16px">${addBtnLabel}</button>
+      ${continueScan?'<button class="btn ghost" id="addOnly" style="margin-top:8px;width:100%;font-size:14px">Dodaj i zakończ</button>':''}
       <div style="text-align:center;margin-top:10px"><a href="#" id="backToMethods" style="color:var(--amber);font-size:14px">← Szukaj ponownie</a></div>`;
 
     // star handlers
@@ -677,8 +698,8 @@ function openCapture(crate){
     });
     // back
     content().querySelector('#backToMethods').onclick=e=>{e.preventDefault();showMethods();};
-    // add
-    content().querySelector('#addResult').onclick=async()=>{
+    // add helper
+    const doAdd=async()=>{
       const targetId=(content().querySelector('#crateSel2')||content().querySelector('#crateSel')).value;
       const nextPos=crateAlbums(targetId).length+1;
       const id=uid();
@@ -691,8 +712,15 @@ function openCapture(crate){
       const qp=sheet.querySelector('#qpill');qp.style.display='flex';
       qp.innerHTML=`<span>📦</span><span>Dodano <b>${addedThisSession}</b> ${plPly(addedThisSession)} w tej sesji</span>`;
       toast('Dodano · miejsce #'+nextPos+' (przód)');
-      showMethods();
     };
+    // main add button — continue scanning if from barcode
+    content().querySelector('#addResult').onclick=async()=>{
+      await doAdd();
+      if(continueScan) doBarcode(); else showMethods();
+    };
+    // optional "add and stop" button
+    const addOnlyBtn=content().querySelector('#addOnly');
+    if(addOnlyBtn) addOnlyBtn.onclick=async()=>{ await doAdd(); showMethods(); };
   }
 
   /* ---- Manual form ---- */
