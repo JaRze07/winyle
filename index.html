@@ -43,7 +43,7 @@
   .btn:disabled{opacity:.45}
   .lead{font-size:17px;color:var(--paper-2);margin:2px 0 20px}
   /* crate list */
-  .crate-card{background:linear-gradient(180deg,#412a17,#311d0e);border:1.5px solid #1c1004;border-radius:12px;padding:18px;margin-bottom:15px;display:flex;gap:16px;align-items:center;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.05),inset 0 -14px 26px rgba(0,0,0,.32);position:relative}
+  .crate-card{background:linear-gradient(180deg,#2a3a3e,#1e2c30);border:1.5px solid #14201f;border-radius:12px;padding:18px;margin-bottom:15px;display:flex;gap:16px;align-items:center;box-shadow:var(--shadow),inset 0 1px 0 rgba(255,255,255,.05),inset 0 -14px 26px rgba(0,0,0,.32);position:relative}
   .crate-card:active{transform:scale(.99)}
   .crate-tag{width:52px;height:64px;border-radius:10px;flex-shrink:0;box-shadow:inset 0 -8px 14px rgba(0,0,0,.18)}
   .crate-thumb{width:52px;height:64px;border-radius:8px;flex-shrink:0;background-size:cover;background-position:center;background-color:var(--ink-3);position:relative;box-shadow:inset 0 0 0 1px rgba(0,0,0,.35),0 4px 10px rgba(0,0,0,.4)}
@@ -57,7 +57,7 @@
   .spine{flex:0 0 auto;width:17px;height:86px;border-radius:3px;position:relative;box-shadow:inset -3px 0 6px rgba(0,0,0,.22)}
   .spine:active{transform:translateY(-4px)}
   /* rows */
-  .row{display:flex;gap:14px;align-items:center;background:linear-gradient(180deg,#3b2614,#2e1c0d);border:1.5px solid #1c1004;border-radius:10px;padding:13px;margin-bottom:11px;position:relative;touch-action:pan-y;box-shadow:0 6px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)}
+  .row{display:flex;gap:14px;align-items:center;background:linear-gradient(180deg,#2a3a3e,#1e2c30);border:1.5px solid #14201f;border-radius:10px;padding:13px;margin-bottom:11px;position:relative;touch-action:pan-y;box-shadow:0 6px 14px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.04)}
   .row.dragging{opacity:.95;box-shadow:var(--shadow);background:var(--ink-3);z-index:5}
   .cover{width:60px;height:60px;border-radius:10px;flex-shrink:0;object-fit:cover;background:var(--ink-3);display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--faint);text-align:center}
   .row .info{flex:1;min-width:0}
@@ -97,7 +97,7 @@
   .chip{font-size:15px;font-weight:600;padding:10px 15px;border-radius:999px;background:var(--ink-3);color:var(--paper-2);border:1.5px solid var(--line);cursor:pointer}
   .chip.on{background:var(--amber);color:#231903;border-color:var(--amber)}
   /* cover preview + fetch */
-  .cover-prev{height:200px;border-radius:18px;border:2px solid var(--line);background:var(--ink);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:13px;position:relative}
+  .cover-prev{height:200px;border-radius:18px;border:2px solid var(--line);background:var(--ink);display:flex;align-items:center;justify-content:center;overflow:hidden;margin-bottom:13px;position:relative;aspect-ratio:1}
   .cover-prev img{width:100%;height:100%;object-fit:cover}
   .cover-prev .ph{color:var(--paper-2);font-size:15px;text-align:center;padding:0 26px}
   .cover-prev .spin{display:flex;flex-direction:column;align-items:center;gap:10px;color:var(--amber);font-weight:600}
@@ -107,6 +107,12 @@
   .fetch-btns button{flex:1;padding:14px;font-size:16px;border-radius:13px}
   .queue-pill{display:flex;align-items:center;gap:10px;background:var(--ink-3);border:1.5px solid var(--line);border-radius:14px;padding:12px 15px;margin-bottom:14px;font-size:16px}
   .queue-pill b{font-family:var(--mono);color:var(--amber)}
+  .qpill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.08);border-radius:10px;padding:10px 14px;margin-top:12px;font-size:14px;color:var(--paper-2)}
+  .spin{text-align:center;padding:40px 0;color:var(--paper-2);font-size:15px}
+  .status-line{text-align:center;font-size:14px;color:var(--faint);padding:6px 0;min-height:28px}
+  .status-line.ok{color:var(--keep)}
+  .status-line.bad{color:var(--oxblood)}
+  .status-line.busy{color:var(--amber)}
   .status{font-size:15.5px;font-weight:600;margin:6px 0 14px;min-height:22px;color:var(--amber)}
   .hint{font-size:14px;color:var(--paper-2);margin:12px 0 4px;text-align:center}
   .scanov{position:fixed;inset:0;z-index:100;background:#000;display:flex;align-items:center;justify-content:center}
@@ -547,141 +553,268 @@ function openNewCrate(){
 
 /* capture */
 function openCapture(crate){
-  let coverVal=null, coverIsLocal=false, mood='', rating=0;
-  const sheet=modal(`
+  const sheet=modal(`<div class="grab"></div>
     <h2>Dodaj płytę</h2>
-    <label class="fld"><span>Do której skrzynki</span>
-      <select class="sel" id="crateSel">${state.crates.map(c=>`<option value="${c.id}" ${c.id===crate.id?'selected':''}>${esc(c.name)}</option>`).join('')}</select>
-    </label>
-    <div class="cover-prev" id="prev"><div class="ph">Zeskanuj kod, znajdź przez Claude, albo wpisz ręcznie</div></div>
-    <div class="status" id="status"></div>
-    <button class="btn" id="scanBtn">Skanuj kod kreskowy</button>
-    <button class="btn ghost" id="claudeBtn" style="margin-top:9px">Znajdź album</button>
-    <p class="hint">Nie wyszło? Uzupełnij dane poniżej.</p>
-    <label class="fld"><span>Wykonawca</span><input id="artist" autocomplete="off"></label>
-    <label class="fld"><span>Tytuł albumu</span><input id="title" autocomplete="off"></label>
-    <label class="fld"><span>Rok</span><input id="year" inputmode="numeric" autocomplete="off"></label>
-    <label class="fld"><span>Gatunek</span><input id="genre" autocomplete="off"></label>
-    <button class="btn ghost" id="takePhoto">Zrób zdjęcie okładki</button>
-    <input type="file" accept="image/*" capture="environment" id="file" style="display:none">
-    <label class="fld" style="margin-top:16px"><span>Nastrój / tempo</span></label>
-    <div class="chiprow" id="mPick" style="margin-bottom:20px">${MOODS.map(g=>`<span class="chip" data-m="${g}">${g}</span>`).join('')}</div>
-    <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">\u2605</span>').join('')}</div></div>
-    <div class="queue-pill" id="qpill" style="display:none"></div>
-    <button class="btn" id="addToCrate">Dodaj do skrzynki</button>
-    <button class="btn ghost" id="doneAdding" style="margin-top:10px">Gotowe</button>`);
-  const prev=sheet.querySelector('#prev'); let addedThisSession=0;
-  const showImg=src=>{ prev.innerHTML=`<img src="${src}" alt="">`; };
-  const showPh=t=>{ prev.innerHTML=`<div class="ph">${t}</div>`; };
-  const setV=(id,v)=>{ if(v)sheet.querySelector('#'+id).value=v; };
-  const status=sheet.querySelector('#status');
-  const setStatus=(msg,kind)=>{ status.innerHTML=msg||''; status.style.color=kind==='ok'?'var(--keep)':kind==='bad'?'var(--oxblood)':'var(--amber)'; };
-  const applyData=d=>{ setV('artist',d.artist);setV('title',d.title);setV('year',d.year);setV('genre',d.genre); if(d.cover){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);} };
+    <div id="capContent"></div>
+    <div id="qpill" class="qpill" style="display:none"></div>`);
+  let addedThisSession=0;
+  const content=()=>sheet.querySelector('#capContent');
 
-  sheet.querySelectorAll('[data-m]').forEach(c=>c.onclick=()=>{mood=c.dataset.m;sheet.querySelectorAll('[data-m]').forEach(x=>x.classList.remove('on'));c.classList.add('on');});
-  sheet.querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
-    rating=+s.dataset.r;
-    sheet.querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
-  });
+  /* ---- Step 1: choose method ---- */
+  function showMethods(){
+    content().innerHTML=`
+      <div style="display:flex;flex-direction:column;gap:12px;padding:10px 0">
+        <button class="btn" id="goScan" style="font-size:16px;padding:16px">📷  Zeskanuj kod kreskowy</button>
+        <button class="btn ghost" id="goPhoto" style="font-size:16px;padding:16px">📸  Zrób zdjęcie okładki</button>
+        <button class="btn ghost" id="goManual" style="font-size:16px;padding:16px">✏️  Wpisz ręcznie</button>
+      </div>
+      <select class="sel" id="crateSel" style="margin-top:10px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>`;
+    content().querySelector('#goScan').onclick=()=>doBarcode();
+    content().querySelector('#goPhoto').onclick=()=>doPhoto();
+    content().querySelector('#goManual').onclick=()=>showManual();
+  }
 
-  // Level 1 — barcode (instant feedback)
-  sheet.querySelector('#scanBtn').onclick=()=>openBarcodeScanner(async code=>{
-    setStatus('Sprawdzam kod '+code+'…','busy'); prev.innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod…</div>`;
-    const d=await barcodeLookup(code);
-    if(d&&(d.title||d.artist)){ applyData(d); setStatus('✓ Rozpoznano z kodu kreskowego','ok'); }
-    else { showPh('Kod nierozpoznany'); setStatus('✗ Kodu nie ma w bazie — spróbuj „Znajdź album"','bad'); }
-  });
-
-  // Level 2 — find the album online (Claude proxy if configured, else iTunes/MusicBrainz)
-  sheet.querySelector('#claudeBtn').onclick=async()=>{
-    const artist=sheet.querySelector('#artist').value.trim();
-    const title=sheet.querySelector('#title').value.trim();
-    if(!artist&&!title){ toast('Wpisz wykonawcę lub tytuł, albo zeskanuj kod'); return; }
-    setStatus('Szukam albumu…','busy'); prev.innerHTML=`<div class="spin"><div class="ring"></div>Szukam…</div>`;
-    try{
-      if(CONFIG.CLAUDE_PROXY){
-        const d=await claudeFind([artist,title].filter(Boolean).join(' — '));
-        if(d&&(d.title||d.artist)){
-          applyData(d); setStatus('✓ Znaleziono','ok');
-          if(!coverVal){ const c=await getApiCover(d.artist||artist,d.title||title); if(c&&c.cover){coverVal=c.cover;coverIsLocal=false;showImg(c.cover);} else { showPh('Brak okładki — zrób zdjęcie'); } }
-          return;
-        }
+  /* ---- Barcode scan ---- */
+  function doBarcode(){
+    content().innerHTML=`<div class="spin"><div class="ring"></div>Otwieranie skanera…</div>`;
+    openBarcodeScanner(async code=>{
+      content().innerHTML=`<div class="spin"><div class="ring"></div>Sprawdzam kod ${esc(code)}…</div>`;
+      const d=await barcodeLookup(code);
+      if(d&&(d.title||d.artist)){
+        showResult(d);
+      } else {
+        content().innerHTML=`<div style="text-align:center;padding:20px 0">
+          <div style="font-size:42px;margin-bottom:12px">✗</div>
+          <div style="font-size:16px;margin-bottom:8px">Kodu <b>${esc(code)}</b> nie ma w bazie</div>
+          <div style="font-size:14px;color:var(--faint);margin-bottom:20px">Spróbuj zdjęcia okładki lub wpisz ręcznie</div>
+          <div style="display:flex;gap:10px">
+            <button class="btn ghost" id="retryPhoto" style="flex:1">📸 Zdjęcie okładki</button>
+            <button class="btn ghost" id="retryManual" style="flex:1">✏️ Ręcznie</button>
+          </div>
+          <div style="margin-top:12px"><a href="#" id="retryBack" style="color:var(--amber);font-size:14px">← Wróć</a></div>
+        </div>`;
+        content().querySelector('#retryPhoto').onclick=()=>doPhoto();
+        content().querySelector('#retryManual').onclick=()=>showManual();
+        content().querySelector('#retryBack').onclick=e=>{e.preventDefault();showMethods();};
       }
-      const d=await getApiCover(artist,title);
-      if(d&&d.cover){ applyData(d); setStatus('✓ Znaleziono album','ok'); }
-      else { showPh('Nie znaleziono'); setStatus('✗ Nie znaleziono — uzupełnij ręcznie','bad'); }
-    }catch(e){ showPh('Błąd'); setStatus('✗ Nie udało się — uzupełnij ręcznie','bad'); }
-  };
+    });
+  }
 
-  // Level 3 — manual photo
-  sheet.querySelector('#takePhoto').onclick=()=>sheet.querySelector('#file').click();
-  sheet.querySelector('#file').addEventListener('change',e=>{
-    const f=e.target.files[0]; if(!f)return;
-    downscale(f).then(d=>{ if(d){ coverVal=d; coverIsLocal=true; showImg(d); } });
-  });
+  /* ---- Photo → Claude vision ---- */
+  function doPhoto(){
+    const inp=document.createElement('input');
+    inp.type='file';inp.accept='image/*';inp.capture='environment';
+    inp.onchange=async()=>{
+      const f=inp.files[0]; if(!f)return;
+      content().innerHTML=`<div class="spin"><div class="ring"></div>Przetwarzanie zdjęcia…</div>`;
+      const dataUrl=await downscale(f);
+      if(!dataUrl){content().innerHTML=`<div>Błąd zdjęcia</div>`;return;}
+      content().innerHTML=`<div class="spin"><div class="ring"></div>Claude analizuje okładkę…</div>`;
+      try{
+        const res=await fetch(CONFIG.CLAUDE_PROXY.replace('/api/claude','')+'/api/claude',{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({image:dataUrl,query:'Identify this vinyl record album from the cover photo.'})
+        });
+        const d=await res.json();
+        if(d&&(d.title||d.artist)){
+          // fetch proper cover from database instead of using user's photo
+          const apiCover=await getApiCover(d.artist||'',d.title||'');
+          if(apiCover&&apiCover.cover) d.cover=apiCover.cover;
+          else d.cover=dataUrl; // fallback to user photo if no db cover
+          if(apiCover&&apiCover.year&&!d.year) d.year=apiCover.year;
+          showResult(d);
+        } else {
+          content().innerHTML=`<div style="text-align:center;padding:20px 0">
+            <div style="font-size:42px;margin-bottom:12px">🤔</div>
+            <div style="font-size:16px;margin-bottom:20px">Nie udało się rozpoznać okładki</div>
+            <div style="display:flex;gap:10px">
+              <button class="btn ghost" id="retryPhoto2" style="flex:1">📸 Spróbuj ponownie</button>
+              <button class="btn ghost" id="retryManual2" style="flex:1">✏️ Ręcznie</button>
+            </div>
+            <div style="margin-top:12px"><a href="#" id="retryBack2" style="color:var(--amber);font-size:14px">← Wróć</a></div>
+          </div>`;
+          content().querySelector('#retryPhoto2').onclick=()=>doPhoto();
+          content().querySelector('#retryManual2').onclick=()=>showManual();
+          content().querySelector('#retryBack2').onclick=e=>{e.preventDefault();showMethods();};
+        }
+      }catch(e){
+        content().innerHTML=`<div style="text-align:center;padding:20px 0">
+          <div style="font-size:16px;color:var(--oxblood)">Błąd połączenia</div>
+          <div style="margin-top:12px"><a href="#" id="errBack" style="color:var(--amber)">← Wróć</a></div>
+        </div>`;
+        content().querySelector('#errBack').onclick=ev=>{ev.preventDefault();showMethods();};
+      }
+    };
+    inp.click();
+  }
 
-  // auto-search while typing
-  let searchTimer=null;
-  const autoSearch=()=>{
-    clearTimeout(searchTimer);
-    const a=sheet.querySelector('#artist').value.trim();
-    const t=sheet.querySelector('#title').value.trim();
-    if(!a&&!t) return;
-    searchTimer=setTimeout(async()=>{
-      const q=[a,t].filter(Boolean).join(' \u2014 ');
+  /* ---- Result card (after successful barcode or photo) ---- */
+  function showResult(d){
+    let coverVal=d.cover||'';
+    let coverIsLocal=false;
+    let mood='',rating=0;
+    content().innerHTML=`
+      <div class="cover-prev">${coverVal?'<img src="'+esc(coverVal)+'" alt="">':'<div class="ph">Brak okładki</div>'}</div>
+      <div style="text-align:center;padding:10px 0">
+        <div style="font-size:20px;font-weight:700">${esc(d.title||'')}</div>
+        <div style="font-size:16px;color:var(--paper-2);margin-top:4px">${esc(d.artist||'')} ${d.year?'· '+d.year:''} ${d.genre?'· '+d.genre:''}</div>
+      </div>
+      <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">★</span>').join('')}</div></div>
+      <div class="fld"><label>Nastrój</label><div id="mPick" class="chiprow">${MOODS.map(m=>'<span class="chip" data-m="'+m+'">'+m+'</span>').join('')}</div></div>
+      <select class="sel" id="crateSel2" style="margin-top:8px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
+      <button class="btn" id="addResult" style="margin-top:14px;width:100%;font-size:16px;padding:16px">Dodaj do skrzynki</button>
+      <div style="text-align:center;margin-top:10px"><a href="#" id="backToMethods" style="color:var(--amber);font-size:14px">← Szukaj ponownie</a></div>`;
+
+    // star handlers
+    content().querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
+      rating=+s.dataset.r;
+      content().querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
+    });
+    // mood handlers
+    content().querySelectorAll('#mPick .chip').forEach(c=>c.onclick=()=>{
+      mood=mood===c.dataset.m?'':c.dataset.m;
+      content().querySelectorAll('#mPick .chip').forEach(x=>x.classList.toggle('on',x.dataset.m===mood));
+    });
+    // back
+    content().querySelector('#backToMethods').onclick=e=>{e.preventDefault();showMethods();};
+    // add
+    content().querySelector('#addResult').onclick=async()=>{
+      const targetId=(content().querySelector('#crateSel2')||content().querySelector('#crateSel')).value;
+      const nextPos=crateAlbums(targetId).length+1;
+      const id=uid();
+      let cover='';
+      if(coverVal&&coverVal.startsWith('data:')){await saveCover(id,coverVal);cover='local';}
+      else if(coverVal){cover=coverVal;}
+      state.albums.push({id,crateId:targetId,position:nextPos,artist:d.artist||'',title:d.title||'',genre:d.genre||'',mood,year:d.year||'',cover,rating});
+      await persist();
+      addedThisSession++;
+      const qp=sheet.querySelector('#qpill');qp.style.display='flex';
+      qp.innerHTML=`<span>📦</span><span>Dodano <b>${addedThisSession}</b> ${plPly(addedThisSession)} w tej sesji</span>`;
+      toast('Dodano · miejsce #'+nextPos+' (przód)');
+      showMethods();
+    };
+  }
+
+  /* ---- Manual form ---- */
+  function showManual(){
+    let coverVal=null,coverIsLocal=false,mood='',rating=0;
+    content().innerHTML=`
+      <div id="prev" class="cover-prev"><div class="ph">Zrób zdjęcie lub znajdź album</div></div>
+      <div id="status" class="status-line"></div>
+      <label class="fld"><span>Wykonawca</span><input id="artist" autocomplete="off"></label>
+      <label class="fld"><span>Album</span><input id="title" autocomplete="off"></label>
+      <label class="fld"><span>Rok</span><input id="year" type="number" inputmode="numeric" min="1900" max="2099"></label>
+      <label class="fld"><span>Gatunek</span><input id="genre" autocomplete="off"></label>
+      <div class="fld"><label>Nastrój</label><div id="mPick" class="chiprow">${MOODS.map(m=>'<span class="chip" data-m="'+m+'">'+m+'</span>').join('')}</div></div>
+      <div class="fld"><label>Ocena</label><div id="rPick" class="starrow">${[1,2,3,4,5].map(n=>'<span class="star" data-r="'+n+'">★</span>').join('')}</div></div>
+      <div style="display:flex;gap:10px;margin-top:8px">
+        <button class="btn ghost" id="claudeBtn" style="flex:1">🔍 Znajdź album</button>
+        <button class="btn ghost" id="takePhoto" style="flex:1">📸 Zdjęcie okładki</button>
+      </div>
+      <input type="file" id="file" accept="image/*" capture="environment" hidden>
+      <select class="sel" id="crateSel3" style="margin-top:12px">${state.crates.map(c=>'<option value="'+c.id+'"'+(c.id===crate.id?' selected':'')+'>'+esc(c.name)+'</option>').join('')}</select>
+      <button class="btn" id="addManual" style="margin-top:14px;width:100%">Dodaj do skrzynki</button>
+      <div style="text-align:center;margin-top:10px"><a href="#" id="backToMethods3" style="color:var(--amber);font-size:14px">← Wróć</a></div>`;
+
+    const setV=(id,v)=>{if(v){const el=content().querySelector('#'+id);if(el&&!el.value)el.value=v;}};
+    const showImg=src=>{const p=content().querySelector('#prev');p.innerHTML=`<img src="${src}" alt="">`;};
+    const showPh=msg=>{content().querySelector('#prev').innerHTML=`<div class="ph">${msg}</div>`;};
+    const setStatus=(msg,cls)=>{const s=content().querySelector('#status');s.textContent=msg;s.className='status-line '+(cls||'');};
+    const applyData=d=>{setV('artist',d.artist);setV('title',d.title);setV('year',d.year);setV('genre',d.genre);if(d.cover){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);}};
+
+    // mood chips
+    content().querySelectorAll('#mPick .chip').forEach(c=>c.onclick=()=>{
+      mood=mood===c.dataset.m?'':c.dataset.m;
+      content().querySelectorAll('#mPick .chip').forEach(x=>x.classList.toggle('on',x.dataset.m===mood));
+    });
+    // star rating
+    content().querySelectorAll('#rPick .star').forEach(s=>s.onclick=()=>{
+      rating=+s.dataset.r;
+      content().querySelectorAll('#rPick .star').forEach((x,i)=>x.classList.toggle('on',i<rating));
+    });
+    // Claude find
+    content().querySelector('#claudeBtn').onclick=async()=>{
+      const artist=content().querySelector('#artist').value.trim();
+      const title=content().querySelector('#title').value.trim();
+      if(!artist&&!title){toast('Wpisz wykonawcę lub tytuł');return;}
+      setStatus('Szukam albumu…','busy');
       try{
         if(CONFIG.CLAUDE_PROXY){
-          setStatus('Szukam\u2026','busy');
-          const d=await claudeFind(q);
-          if(d&&(d.title||d.artist)){
-            if(!sheet.querySelector('#year').value&&d.year) sheet.querySelector('#year').value=d.year;
-            if(!sheet.querySelector('#genre').value&&d.genre) sheet.querySelector('#genre').value=d.genre;
-            if(!coverVal&&d.artist&&d.title){
-              const c=await getApiCover(d.artist,d.title);
-              if(c&&c.cover){coverVal=c.cover;coverIsLocal=false;showImg(c.cover);}
-            }
-            setStatus('\u2713 Dopasowano','ok');
+          const d=await claudeFind([artist,title].filter(Boolean).join(' — '));
+          if(d&&(d.title||d.artist)){applyData(d);setStatus('✓ Znaleziono','ok');
+            if(!coverVal){const c=await getApiCover(d.artist||artist,d.title||title);if(c&&c.cover){coverVal=c.cover;coverIsLocal=false;showImg(c.cover);}else showPh('Brak okładki');}
             return;
           }
         }
-        const d=await getApiCover(a||'',t||'');
-        if(d){
-          if(d.cover&&!coverVal){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);}
-          if(!sheet.querySelector('#year').value&&d.year) sheet.querySelector('#year').value=d.year;
-          if(!sheet.querySelector('#genre').value&&d.genre) sheet.querySelector('#genre').value=d.genre;
-          setStatus('\u2713 Dopasowano','ok');
-        }
-      }catch(e){}
-    },1200);
-  };
-  sheet.querySelector('#artist').addEventListener('input',autoSearch);
-  sheet.querySelector('#title').addEventListener('input',autoSearch);
+        const d=await getApiCover(artist,title);
+        if(d&&d.cover){applyData(d);setStatus('✓ Znaleziono album','ok');}
+        else{showPh('Nie znaleziono');setStatus('✗ Nie znaleziono — uzupełnij ręcznie','bad');}
+      }catch(e){showPh('Błąd');setStatus('✗ Błąd — uzupełnij ręcznie','bad');}
+    };
+    // photo
+    content().querySelector('#takePhoto').onclick=()=>content().querySelector('#file').click();
+    content().querySelector('#file').addEventListener('change',e=>{
+      const f=e.target.files[0];if(!f)return;
+      downscale(f).then(d=>{if(d){coverVal=d;coverIsLocal=true;showImg(d);}});
+    });
+    // auto-search while typing
+    let searchTimer=null;
+    const autoSearch=()=>{
+      clearTimeout(searchTimer);
+      const a=content().querySelector('#artist').value.trim();
+      const t=content().querySelector('#title').value.trim();
+      if(!a&&!t)return;
+      searchTimer=setTimeout(async()=>{
+        try{
+          if(CONFIG.CLAUDE_PROXY){
+            setStatus('Szukam…','busy');
+            const d=await claudeFind([a,t].filter(Boolean).join(' — '));
+            if(d&&(d.title||d.artist)){
+              if(!content().querySelector('#year').value&&d.year)content().querySelector('#year').value=d.year;
+              if(!content().querySelector('#genre').value&&d.genre)content().querySelector('#genre').value=d.genre;
+              if(!coverVal&&d.artist&&d.title){const c=await getApiCover(d.artist,d.title);if(c&&c.cover){coverVal=c.cover;coverIsLocal=false;showImg(c.cover);}}
+              setStatus('✓ Dopasowano','ok');return;
+            }
+          }
+          const d=await getApiCover(a||'',t||'');
+          if(d){
+            if(d.cover&&!coverVal){coverVal=d.cover;coverIsLocal=false;showImg(d.cover);}
+            if(!content().querySelector('#year').value&&d.year)content().querySelector('#year').value=d.year;
+            if(!content().querySelector('#genre').value&&d.genre)content().querySelector('#genre').value=d.genre;
+            setStatus('✓ Dopasowano','ok');
+          }
+        }catch(e){}
+      },1200);
+    };
+    content().querySelector('#artist').addEventListener('input',autoSearch);
+    content().querySelector('#title').addEventListener('input',autoSearch);
+    // back
+    content().querySelector('#backToMethods3').onclick=e=>{e.preventDefault();showMethods();};
+    // add
+    content().querySelector('#addManual').onclick=async()=>{
+      const artist=content().querySelector('#artist').value.trim();
+      const title=content().querySelector('#title').value.trim();
+      if(!artist&&!title){toast('Najpierw podaj wykonawcę lub tytuł');return;}
+      const year=content().querySelector('#year').value.trim();
+      const genre=content().querySelector('#genre').value.trim();
+      const targetId=content().querySelector('#crateSel3').value;
+      const nextPos=crateAlbums(targetId).length+1;
+      const id=uid();
+      let cover='';
+      if(coverVal&&coverIsLocal){await saveCover(id,coverVal);cover='local';}
+      else if(coverVal){cover=coverVal;}
+      state.albums.push({id,crateId:targetId,position:nextPos,artist,title,genre,mood,year,cover,rating});
+      await persist();
+      addedThisSession++;
+      const qp=sheet.querySelector('#qpill');qp.style.display='flex';
+      qp.innerHTML=`<span>📦</span><span>Dodano <b>${addedThisSession}</b> ${plPly(addedThisSession)} w tej sesji</span>`;
+      toast('Dodano · miejsce #'+nextPos+' (przód)');
+      showMethods();
+    };
+  }
 
-  sheet.querySelector('#addToCrate').onclick=async()=>{
-    const targetId=sheet.querySelector('#crateSel').value;
-    const artist=sheet.querySelector('#artist').value.trim();
-    const title=sheet.querySelector('#title').value.trim();
-    const year=sheet.querySelector('#year').value.trim();
-    const genre=sheet.querySelector('#genre').value.trim();
-    if(!artist&&!title){toast('Najpierw podaj wykonawcę lub tytuł');return;}
-    const nextPos=crateAlbums(targetId).length+1;
-    const id=uid();
-    let cover='';
-    if(coverVal&&coverIsLocal){ await saveCover(id,coverVal); cover='local'; }
-    else if(coverVal){ cover=coverVal; }
-    state.albums.push({id,crateId:targetId,position:nextPos,artist,title,genre,mood,year,cover,rating});
-    await persist();
-    addedThisSession++;
-    coverVal=null;coverIsLocal=false;mood='';rating=0;
-    showPh('Zeskanuj kod, znajdź przez Claude, albo wpisz ręcznie'); setStatus('','');
-    ['artist','title','year','genre'].forEach(x=>sheet.querySelector('#'+x).value='');
-    sheet.querySelectorAll('.chip.on').forEach(x=>x.classList.remove('on'));
-    sheet.querySelectorAll('#rPick .star').forEach(x=>x.classList.remove('on'));
-    const qp=sheet.querySelector('#qpill'); qp.style.display='flex';
-    qp.innerHTML=`<span>📦</span><span>Dodano <b>${addedThisSession}</b> ${plPly(addedThisSession)} w tej sesji</span>`;
-    toast('Dodano · miejsce #'+nextPos+' (przód)');
-  };
-  sheet.querySelector('#doneAdding').onclick=()=>{closeModal();render();};
+  showMethods();
+  sheet.querySelector('.grab').onclick=()=>closeModal();
 }
 function downscale(file){
   return new Promise(res=>{

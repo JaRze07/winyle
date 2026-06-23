@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.jarze07.winyle",
+    "sha256_cert_fingerprints": ["04:88:DF:E9:BE:5A:1C:D1:ED:A3:6B:C7:69:49:2F:8E:1F:D9:B2:DD:C2:6D:0B:AB:AA:0B:F5:7B:10:12:06:16"]
+  }
+}]
