@@ -6,6 +6,19 @@
       "closed": false
     }
   ],
-  "albums": [],
+  "albums": [
+    {
+      "id": "mqr16zmxyhh6",
+      "crateId": "mqr13qgs7pv4",
+      "position": 1,
+      "artist": "The Oscar Peterson Trio",
+      "title": "We Get Requests",
+      "genre": "Jazz",
+      "mood": "Spokojny",
+      "year": "1964",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music116/v4/6a/92/89/6a9289d1-69aa-6e20-7cef-4279b6cc415d/15UMGIM33844.rgb.jpg/600x600bb.jpg",
+      "rating": 0
+    }
+  ],
   "covers": {}
 }
