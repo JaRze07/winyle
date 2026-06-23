@@ -104,6 +104,18 @@
       "year": "1970",
       "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music221/v4/39/76/93/397693c0-2030-cae1-5124-678d304ce705/886445635836.jpg/600x600bb.jpg",
       "rating": 0
+    },
+    {
+      "id": "mqqxoce34cmx",
+      "crateId": "mqqv951rrqwe",
+      "position": 7,
+      "artist": "Breakout",
+      "title": "Blues",
+      "genre": "Blues",
+      "mood": "",
+      "year": "1971",
+      "cover": "https://is1-ssl.mzstatic.com/image/thumb/Music124/v4/be/4b/00/be4b00dd-a9e5-dc65-cd6e-1181104e3bd4/825646933174.jpg/600x600bb.jpg",
+      "rating": 0
     }
   ],
   "covers": {}
